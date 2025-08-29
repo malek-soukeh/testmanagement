@@ -27,10 +27,11 @@ public class TestCaseController {
 
     @PostMapping
     public ResponseEntity<TestCaseResponse> createTestCase(
+            @PathVariable Long testsuiteId,
             @RequestBody CreateTestCaseRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        TestCase testCase = testCaseService.createTestCase(request, userDetails.getUsername());
+        TestCase testCase = testCaseService.createTestCase(request, userDetails.getUsername(),testsuiteId);
         return ResponseEntity.status(HttpStatus.CREATED).body(TestCaseResponse.fromEntity(testCase));
     }
 

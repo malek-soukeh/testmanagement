@@ -46,6 +46,10 @@ public class TestCase {
     private Status status = Status.DRAFT;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "test_suite_id")
+    private TestSuite testSuite;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "password", "role"})
     private User createdBy;

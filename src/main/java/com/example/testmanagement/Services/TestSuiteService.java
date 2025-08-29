@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service @Transactional
 public class TestSuiteService {
@@ -45,5 +46,9 @@ public class TestSuiteService {
                 .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
 
         return testSuiteRepository.findByProject(project);
+    }
+
+    public Optional<TestSuite> getTestSuite(Long testSuiteId) {
+        return testSuiteRepository.findById(testSuiteId);
     }
 }

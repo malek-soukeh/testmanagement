@@ -1,8 +1,10 @@
 package com.example.testmanagement.Services;
 
 import com.example.testmanagement.Entities.TestCase;
+import com.example.testmanagement.Entities.TestSuite;
 import com.example.testmanagement.Entities.User;
 import com.example.testmanagement.Repository.TestCaseRepository;
+import com.example.testmanagement.Repository.TestSuiteRepository;
 import com.example.testmanagement.Repository.UserRepository;
 import com.example.testmanagement.Requests.CreateTestCaseRequest;
 import com.example.testmanagement.Requests.UpdateTestCaseRequest;
@@ -15,12 +17,15 @@ import java.util.Map;
 
 @Service @Transactional @RequiredArgsConstructor
 public class TestCaseService {
+    private final TestSuiteRepository testSuiteRepository;
     private final TestCaseRepository testCaseRepository;
     private final UserRepository userRepository;
 
-    public TestCase createTestCase(CreateTestCaseRequest request, String username) {
+    public TestCase createTestCase(CreateTestCaseRequest request, String username,Long testSuiteId) {
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new RuntimeException("User not found: " + username));
+
+        TestSuite testSuite = testSuiteRepository.findById(testSuiteId).orElseThrow(() -> new RuntimeException("Test Suite not found: " + testSuiteId));
 
         TestCase testCase = new TestCase();
         testCase.setTitle(request.getTitle());
@@ -31,13 +36,14 @@ public class TestCaseService {
         testCase.setPriority(request.getPriority() != null ? request.getPriority() : TestCase.Priority.MEDIUM);
         testCase.setStatus(request.getStatus() != null ? request.getStatus() : TestCase.Status.DRAFT);
         testCase.setCreatedBy(user);
+        testCase.setTestSuite(testSuite);
 
         return testCaseRepository.save(testCase);
     }
 
     @Transactional(readOnly = true)
     public List<TestCase> getAllTestCases() {
-        return testCaseRepository.findAll();
+        return testCaseRepository.findAllWithSuiteAndProject();
     }
 
     @Transactional(readOnly = true)

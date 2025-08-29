@@ -10,6 +10,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/test-suite/{projectId}")
@@ -29,6 +30,12 @@ public class TestSuiteController {
         return ResponseEntity.ok(
                 testSuiteService.createTestSuite(projectId, suite, userDetails.getUsername())
         );
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Optional<TestSuite>> getTestSuite(@PathVariable Long id)
+    {
+        return ResponseEntity.ok(testSuiteService.getTestSuite(id));
     }
 
     @GetMapping
