@@ -3,6 +3,7 @@ package com.example.testmanagement.Entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -21,6 +22,19 @@ public class TestCase {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @NotBlank(message = "Title is required")
+    @Column(nullable = false)
+    private String title;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(columnDefinition = "TEXT")
+    private String testSteps;
+
+    @Column(columnDefinition = "TEXT")
+    private String expectedResult;
 
     @Enumerated(EnumType.STRING)
     private TestType testType = TestType.MANUAL;

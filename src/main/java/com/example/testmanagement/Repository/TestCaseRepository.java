@@ -5,9 +5,18 @@ import com.example.testmanagement.Entities.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface TestCaseRepository extends JpaRepository<TestCase,Long> {
     List<TestCase> findByCreatedBy(User user);
+    List<TestCase> findByCreatedById(Long userId);
     List<TestCase> findByTestType(TestCase.TestType testType);
     List<TestCase> findByPriority(TestCase.Priority priority);
+    List<TestCase> findByStatus(TestCase.Status status);
+    List<TestCase> findByTitleContainingIgnoreCase(String title);
+    Optional<TestCase> findByIdAndCreatedById(Long id, Long userId);
+
+    long countByTestType(TestCase.TestType testType);
+    long countByPriority(TestCase.Priority priority);
+    long countByStatus(TestCase.Status status);
 }
