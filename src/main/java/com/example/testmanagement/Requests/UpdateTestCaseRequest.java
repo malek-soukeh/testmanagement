@@ -9,6 +9,7 @@ public class UpdateTestCaseRequest {
     private String description;
     private String testSteps;
     private String expectedResult;
+    private String precondition;
     private TestCase.TestType testType;
     private TestCase.Priority priority;
     private TestCase.Status status;

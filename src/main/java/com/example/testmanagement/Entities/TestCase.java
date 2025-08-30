@@ -1,12 +1,12 @@
 package com.example.testmanagement.Entities;
 
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Getter
@@ -30,11 +30,9 @@ public class TestCase {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(columnDefinition = "TEXT")
-    private String testSteps;
 
     @Column(columnDefinition = "TEXT")
-    private String expectedResult;
+    private String precondition;
 
     @Enumerated(EnumType.STRING)
     private TestType testType = TestType.MANUAL;
@@ -53,6 +51,11 @@ public class TestCase {
     @JoinColumn(name = "created_by")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "password", "role"})
     private User createdBy;
+
+    @OneToMany(fetch = FetchType.LAZY)
+    @JoinColumn(name = "test_case_id")
+    @JsonIgnoreProperties({"testCaseSteps"})
+    private List<TestCaseStep> testCaseSteps;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

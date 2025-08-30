@@ -30,8 +30,7 @@ public class TestCaseService {
         TestCase testCase = new TestCase();
         testCase.setTitle(request.getTitle());
         testCase.setDescription(request.getDescription());
-        testCase.setTestSteps(request.getTestSteps());
-        testCase.setExpectedResult(request.getExpectedResult());
+        testCase.setPrecondition(request.getPrecondition());
         testCase.setTestType(request.getTestType() != null ? request.getTestType() : TestCase.TestType.MANUAL);
         testCase.setPriority(request.getPriority() != null ? request.getPriority() : TestCase.Priority.MEDIUM);
         testCase.setStatus(request.getStatus() != null ? request.getStatus() : TestCase.Status.DRAFT);
@@ -88,8 +87,7 @@ public class TestCaseService {
 
         if (request.getTitle() != null) testCase.setTitle(request.getTitle());
         if (request.getDescription() != null) testCase.setDescription(request.getDescription());
-        if (request.getTestSteps() != null) testCase.setTestSteps(request.getTestSteps());
-        if (request.getExpectedResult() != null) testCase.setExpectedResult(request.getExpectedResult());
+        if (request.getPrecondition() != null) testCase.setPrecondition(request.getPrecondition());
         if (request.getTestType() != null) testCase.setTestType(request.getTestType());
         if (request.getPriority() != null) testCase.setPriority(request.getPriority());
         if (request.getStatus() != null) testCase.setStatus(request.getStatus());
