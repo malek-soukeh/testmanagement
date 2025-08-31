@@ -5,6 +5,7 @@ import com.example.testmanagement.Entities.Project;
 import com.example.testmanagement.Entities.User;
 import com.example.testmanagement.Repository.ProjectRepository;
 import com.example.testmanagement.Requests.CreateProjectRequest;
+import com.example.testmanagement.Responses.ProjectResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,9 +47,13 @@ public class ProjectService {
         return projectRepository.save(project);
     }
 
-    public List<Project> getAllProjects(String username) {
+    public List<ProjectResponse> getAllProjects(String username) {
         User user = userService.findByUsername(username).orElseThrow(() -> new RuntimeException("User Not Found"));
-        return projectRepository.findByCreatedBy(user);
+        List<Project> projects = projectRepository.findByCreatedBy(user);
+
+        return projects.stream()
+                .map(ProjectResponse::fromEntity)
+                .toList();
     }
 
     public void deleteProject(Long id, String username) {
@@ -70,8 +75,8 @@ public class ProjectService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<Project> getProjectById(Long id) {
-        return projectRepository.findById(id);
+    public Optional<ProjectResponse> getProjectById(Long id) {
+        return projectRepository.findById(id).map(ProjectResponse::fromEntity);
     }
 
     public List<Project> getProjectsByUser(String username) {

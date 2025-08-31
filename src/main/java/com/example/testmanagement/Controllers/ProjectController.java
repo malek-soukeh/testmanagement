@@ -1,6 +1,7 @@
 package com.example.testmanagement.Controllers;
 
 import com.example.testmanagement.Entities.Project;
+import com.example.testmanagement.Responses.ProjectResponse;
 import com.example.testmanagement.Services.ProjectService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,12 +29,12 @@ public class ProjectController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Project>> getAllProjects(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<List<ProjectResponse>> getAllProjects(@AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(projectService.getAllProjects(userDetails.getUsername()));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Project> getProjectById(@PathVariable Long id) {
+    public ResponseEntity<ProjectResponse> getProjectById(@PathVariable Long id) {
         return projectService.getProjectById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());

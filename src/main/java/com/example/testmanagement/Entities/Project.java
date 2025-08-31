@@ -15,6 +15,8 @@ import java.util.*;
 @Table(name = "projects")
 public class Project {
 
+    public enum Status { ACTIVE, MAINTENANCE, ARCHIVED }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -31,9 +33,37 @@ public class Project {
     @JsonIgnoreProperties("project")
     private List<TestSuite> testSuites = new ArrayList<>();
 
+    @Enumerated(EnumType.STRING)
+    private Status status = Status.ACTIVE;
+
+    private Long teamSize;
+    private Long passRate;
+    private Long criticalBugs;
+    private Long automationCoverage;
+    private LocalDateTime lastActivity;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    @Transient
+    public Long getTotalTestCases() {
+        if (testSuites == null || testSuites.isEmpty()) {
+            return 0L;
+        }
+        return testSuites.stream()
+                .mapToLong(testSuite ->
+                        testSuite.getTestCases() != null ? testSuite.getTestCases().size() : 0L
+                )
+                .sum();
+    }
+
+    @Transient
+    public Long getTotalTestSuites() {
+        if (testSuites == null || testSuites.isEmpty()) {
+            return 0L;
+        }
+        return (long) testSuites.size();
+    }
 
     @PrePersist
     public void onCreate() {
@@ -43,5 +73,6 @@ public class Project {
     @PreUpdate
     public void onUpdate() {
         updatedAt = LocalDateTime.now();
+        lastActivity = LocalDateTime.now();
     }
 }
