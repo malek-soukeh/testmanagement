@@ -29,8 +29,6 @@ public class TestCaseStepService {
         TestCaseStep step = new TestCaseStep();
         step.setStepName(request.getStepName());
         step.setExpectedResult(request.getExpectedResult());
-        step.setActualResult(request.getActualResult());
-        step.setResult(request.getResult() != null ? request.getResult() : TestCaseStep.CaseResult.NATURAL);
         step.setTestCase(testCase);
         step.setCreatedBy(user);
 
