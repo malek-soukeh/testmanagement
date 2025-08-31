@@ -48,6 +48,7 @@ public class TestCaseService {
                TestCaseStep testCaseStep = new TestCaseStep();
                testCaseStep.setStepName(stepReq.getStepName());
                testCaseStep.setExpectedResult(stepReq.getExpectedResult());
+               testCaseStep.setCreatedBy(user);
                testCaseStep.setTestCase(savedTestCase);
                return testCaseStep;
             }).toList();
