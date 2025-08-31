@@ -1,9 +1,11 @@
 package com.example.testmanagement.Services;
 
 import com.example.testmanagement.Entities.TestCase;
+import com.example.testmanagement.Entities.TestCaseStep;
 import com.example.testmanagement.Entities.TestSuite;
 import com.example.testmanagement.Entities.User;
 import com.example.testmanagement.Repository.TestCaseRepository;
+import com.example.testmanagement.Repository.TestCaseStepRepository;
 import com.example.testmanagement.Repository.TestSuiteRepository;
 import com.example.testmanagement.Repository.UserRepository;
 import com.example.testmanagement.Requests.CreateTestCaseRequest;
@@ -14,12 +16,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service @Transactional @RequiredArgsConstructor
 public class TestCaseService {
     private final TestSuiteRepository testSuiteRepository;
     private final TestCaseRepository testCaseRepository;
     private final UserRepository userRepository;
+    private final TestCaseStepRepository testCaseStepRepository;
 
     public TestCase createTestCase(CreateTestCaseRequest request, String username,Long testSuiteId) {
         User user = userRepository.findByEmail(username)
@@ -36,8 +40,21 @@ public class TestCaseService {
         testCase.setStatus(request.getStatus() != null ? request.getStatus() : TestCase.Status.DRAFT);
         testCase.setCreatedBy(user);
         testCase.setTestSuite(testSuite);
+        
+        TestCase savedTestCase = testCaseRepository.save(testCase);
+        
+        if(request.getSteps() != null && !request.getSteps().isEmpty()) {
+            List<TestCaseStep> steps = request.getSteps().stream().map(stepReq ->{
+               TestCaseStep testCaseStep = new TestCaseStep();
+               testCaseStep.setStepName(stepReq.getStepName());
+               testCaseStep.setExpectedResult(stepReq.getExpectedResult());
+               testCaseStep.setTestCase(savedTestCase);
+               return testCaseStep;
+            }).toList();
+            testCaseStepRepository.saveAll(steps);
+        }
 
-        return testCaseRepository.save(testCase);
+        return savedTestCase;
     }
 
     @Transactional(readOnly = true)

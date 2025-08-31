@@ -1,8 +1,11 @@
 package com.example.testmanagement.Requests;
 
 import com.example.testmanagement.Entities.TestCase;
+import com.example.testmanagement.Entities.TestCaseStep;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
+
+import java.util.List;
 
 @Data
 public class CreateTestCaseRequest {
@@ -16,4 +19,5 @@ public class CreateTestCaseRequest {
     private TestCase.TestType testType;
     private TestCase.Priority priority;
     private TestCase.Status status;
+    private List<CreateTestCaseStepRequest> steps;
 }

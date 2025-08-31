@@ -6,12 +6,9 @@ import lombok.Data;
 
 @Data
 public class CreateTestCaseStepRequest {
-
     @NotBlank(message = "Step name is required")
     private String stepName;
-
+    @NotBlank(message = "Expected Result is required")
     private String expectedResult;
-    private String actualResult;
-    private TestCaseStep.CaseResult result;
     private Long testCaseId;
 }
