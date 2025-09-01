@@ -16,7 +16,7 @@ public interface TestCaseRepository extends JpaRepository<TestCase,Long> {
     List<TestCase> findByStatus(TestCase.Status status);
     List<TestCase> findByTitleContainingIgnoreCase(String title);
     Optional<TestCase> findByIdAndCreatedById(Long id, Long userId);
-
+    List<TestCase> findAllByTestSuiteId(Long testSuiteId);
     long countByTestType(TestCase.TestType testType);
     long countByPriority(TestCase.Priority priority);
     long countByStatus(TestCase.Status status);

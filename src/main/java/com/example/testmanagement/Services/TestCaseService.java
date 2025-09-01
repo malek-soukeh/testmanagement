@@ -59,8 +59,8 @@ public class TestCaseService {
     }
 
     @Transactional(readOnly = true)
-    public List<TestCase> getAllTestCases() {
-        return testCaseRepository.findAllWithSuiteAndProject();
+    public List<TestCase> getAllTestCases(Long suiteId) {
+        return testCaseRepository.findAllByTestSuiteId(suiteId);
     }
 
     @Transactional(readOnly = true)

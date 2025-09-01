@@ -36,8 +36,8 @@ public class TestCaseController {
     }
 
     @GetMapping
-    public ResponseEntity<List<TestCaseResponse>> getAllTestCases() {
-        List<TestCaseResponse> testCases = testCaseService.getAllTestCases().stream()
+    public ResponseEntity<List<TestCaseResponse>> getAllTestCases(@PathVariable Long testsuiteId) {
+        List<TestCaseResponse> testCases = testCaseService.getAllTestCases(testsuiteId).stream()
                 .map(TestCaseResponse::fromEntity)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(testCases);
