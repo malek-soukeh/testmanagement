@@ -1,5 +1,6 @@
 package com.example.testmanagement.Controllers;
 
+import com.example.testmanagement.Entities.Role;
 import com.example.testmanagement.Entities.User;
 import com.example.testmanagement.Repository.UserRepository;
 import com.example.testmanagement.Requests.LoginRequest;
@@ -41,7 +42,7 @@ public class AuthController {
         );
         User user = userRepo.findByEmail(request.getEmail()).orElseThrow(()-> new RuntimeException("User not found!"));
         String token = jwtUtil.generateToken(request.getEmail());
-        List<String> roles = user.getRoles().stream().toList();
+        List<Role> roles = user.getRoles().stream().toList();
         return new LoginResponse(token, user.getId(), user.getEmail(),  roles);
     }
 }

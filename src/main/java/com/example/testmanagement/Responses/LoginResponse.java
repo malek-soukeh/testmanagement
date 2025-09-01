@@ -1,5 +1,6 @@
 package com.example.testmanagement.Responses;
 
+import com.example.testmanagement.Entities.Role;
 import lombok.*;
 
 import java.util.List;
@@ -10,9 +11,9 @@ public class LoginResponse {
     private String token;
     private Long id;
     private String email;
-    private List<String> roles;
+    private List<Role> roles;
 
-    public LoginResponse(String token,Long id, String email, List<String> roles) {
+    public LoginResponse(String token,Long id, String email, List<Role> roles) {
         this.token = token;
         this.id = id;
         this.email = email;
