@@ -37,9 +37,6 @@ public class Project {
     private Status status = Status.ACTIVE;
 
     private Long teamSize;
-    private Long passRate;
-    private Long criticalBugs;
-    private Long automationCoverage;
     private LocalDateTime lastActivity;
 
     private LocalDateTime createdAt;

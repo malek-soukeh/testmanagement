@@ -33,9 +33,6 @@ public class ProjectResponse {
         response.setCreatedBy(project.getCreatedBy().getFirstName() + " " + project.getCreatedBy().getLastName());
         response.setStatus(project.getStatus());
         response.setTeamSize(project.getTeamSize());
-        response.setPassRate(project.getPassRate());
-        response.setCriticalBugs(project.getCriticalBugs());
-        response.setAutomationCoverage(project.getAutomationCoverage());
         response.setLastActivity(project.getLastActivity());
         response.setTotalTestSuites(project.getTotalTestSuites());
         response.setTotalTestCases(project.getTotalTestCases());

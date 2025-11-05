@@ -42,4 +42,19 @@ public class TestSuiteController {
     public ResponseEntity<List<TestSuite>> getSuites(@PathVariable Long projectId) {
         return ResponseEntity.ok(testSuiteService.getTestSuites(projectId));
     }
+
+    @PutMapping("/{Id}")
+    public ResponseEntity<TestSuite> updateSuite(@PathVariable Long Id,
+                                                 @RequestBody TestSuite suiteDetails,
+                                                 @AuthenticationPrincipal UserDetails userDetails)
+    {
+        TestSuite updatedSuite = testSuiteService.updateTestSuite(Id, suiteDetails, userDetails.getUsername());
+        return ResponseEntity.ok(updatedSuite);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTestSuite(@PathVariable Long id, @AuthenticationPrincipal UserDetails userDetails) {
+        testSuiteService.deleteTestSuite(id, userDetails.getUsername());
+        return ResponseEntity.noContent().build();
+    }
 }

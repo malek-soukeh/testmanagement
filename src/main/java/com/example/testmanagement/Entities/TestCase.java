@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -18,7 +19,7 @@ public class TestCase {
 
     public enum TestType { MANUAL, AUTOMATED, PERFORMANCE }
     public enum Priority { LOW, MEDIUM, HIGH, CRITICAL }
-    public enum Status { DRAFT, READY, OBSOLETE }
+    public enum Status { PASSED,DRAFT, READY, RUNNING , FAILED }
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -41,6 +42,7 @@ public class TestCase {
     private Priority priority = Priority.MEDIUM;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private Status status = Status.DRAFT;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -59,4 +61,8 @@ public class TestCase {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String testUrl ;
+
+    @OneToMany(mappedBy = "testCase", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<TestResult> testResults = new ArrayList<>();
 }

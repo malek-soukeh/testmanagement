@@ -45,5 +45,8 @@ public class TestCaseStep {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String actionType;
+    private String actionTarget;
+    private String actionValue;
 
 }

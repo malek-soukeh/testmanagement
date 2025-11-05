@@ -1,9 +1,12 @@
 package com.example.testmanagement.Controllers;
 
 import com.example.testmanagement.Entities.TestCase;
+import com.example.testmanagement.Repository.TestCaseRepository;
 import com.example.testmanagement.Requests.CreateTestCaseRequest;
 import com.example.testmanagement.Requests.UpdateTestCaseRequest;
 import com.example.testmanagement.Responses.TestCaseResponse;
+import com.example.testmanagement.Services.JenkinsService;
+import com.example.testmanagement.Services.SeleniumExecutionService;
 import com.example.testmanagement.Services.TestCaseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -13,6 +16,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -24,6 +28,9 @@ import java.util.stream.Collectors;
 public class TestCaseController {
 
     private final TestCaseService testCaseService;
+    private final JenkinsService jenkinsService;
+    private final TestCaseRepository testCaseRepository;
+    private final SeleniumExecutionService seleniumService;
 
     @PostMapping
     public ResponseEntity<TestCaseResponse> createTestCase(
@@ -105,5 +112,57 @@ public class TestCaseController {
         Map<String, Long> statistics = testCaseService.getTestCaseStatistics();
         return ResponseEntity.ok(statistics);
     }
+    @PostMapping("/{testCaseId}/trigger-jenkins")
+    public ResponseEntity<Map<String, Object>> triggerJenkinsTestCase(
+            @PathVariable Long testsuiteId,
+            @PathVariable Long testCaseId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        // Récupérer les infos Jenkins depuis config ou propriétés
+        String jenkinsJobUrl = "http://jenkins-server/job/selenium-run/buildWithParameters";
+        String jenkinsUser = "jenkinsUser";
+        String jenkinsToken = "jenkinsToken";
+
+        // Déclencher le test
+        Map<String, Object> result = seleniumService.triggerTestCaseViaJenkins(
+                testCaseId,
+                getUserIdFromUsername(userDetails.getUsername()), // méthode utilitaire pour récupérer l'id utilisateur
+                jenkinsJobUrl,
+                jenkinsUser,
+                jenkinsToken
+        );
+
+        return ResponseEntity.ok(result);
+    }
+    private Long getUserIdFromUsername(String firstName) {
+        return testCaseService.getUserIdByUsername(firstName);
+    }
+    @PostMapping("/{id}/trigger")
+    public ResponseEntity<String> triggerTestCaseExecution(@PathVariable Long id,@PathVariable Long testsuiteId) {
+        testCaseService.triggerAutomatedTest(id);
+        return ResponseEntity.ok("Test case " + id + " started successfully");
+    }
+
+    @GetMapping("/count-by-type")
+    public Map<String, Long> getTestCaseCountByType() {
+        long manual = testCaseRepository.countByTestType(TestCase.TestType.MANUAL);
+        long automated = testCaseRepository.countByTestType(TestCase.TestType.AUTOMATED);
+        long performance = testCaseRepository.countByTestType(TestCase.TestType.PERFORMANCE);
+
+        Map<String, Long> response = new HashMap<>();
+        response.put("manual", manual);
+        response.put("automated", automated);
+        response.put("performance", performance);
+
+        return response;
+    }
+
+    @GetMapping("/{id}/last-build-result")
+    public ResponseEntity<JenkinsService.TestResultSummary> getLastBuildResult(@PathVariable Long id) {
+        JenkinsService.TestResultSummary summary = jenkinsService.getLastBuildTestResult();
+        if (summary == null) return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        return ResponseEntity.ok(summary);
+    }
+
 
 }

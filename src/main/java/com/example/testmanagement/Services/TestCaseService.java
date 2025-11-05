@@ -11,9 +11,11 @@ import com.example.testmanagement.Repository.UserRepository;
 import com.example.testmanagement.Requests.CreateTestCaseRequest;
 import com.example.testmanagement.Requests.UpdateTestCaseRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -24,6 +26,8 @@ public class TestCaseService {
     private final TestCaseRepository testCaseRepository;
     private final UserRepository userRepository;
     private final TestCaseStepRepository testCaseStepRepository;
+    private final JenkinsService jenkinsService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public TestCase createTestCase(CreateTestCaseRequest request, String username,Long testSuiteId) {
         User user = userRepository.findByEmail(username)
@@ -136,7 +140,25 @@ public class TestCaseService {
                 "performanceTestCases", testCaseRepository.countByTestType(TestCase.TestType.PERFORMANCE),
                 "draftTestCases", testCaseRepository.countByStatus(TestCase.Status.DRAFT),
                 "readyTestCases", testCaseRepository.countByStatus(TestCase.Status.READY),
-                "obsoleteTestCases", testCaseRepository.countByStatus(TestCase.Status.OBSOLETE)
-        );
+                "runningTestCases", testCaseRepository.countByStatus(TestCase.Status.RUNNING),
+                "passedTestCases", testCaseRepository.countByStatus(TestCase.Status.PASSED),
+                "failedTestCases", testCaseRepository.countByStatus(TestCase.Status.FAILED)
+                );
+    }
+    public void triggerAutomatedTest(Long id) {
+        TestCase testCase = testCaseRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Test case not found"));
+
+        if (testCase.getTestType() != TestCase.TestType.AUTOMATED &&
+                testCase.getTestType() != TestCase.TestType.PERFORMANCE) {
+            throw new RuntimeException("Only automated or performance tests can be triggered");
+        }
+        jenkinsService.triggerJenkinsJob(id);
+    }
+
+    public Long getUserIdByUsername(String firstName ) {
+        return userRepository.findByFirstName(firstName)
+                .map(User::getId)
+                .orElseThrow(() -> new RuntimeException("User not found: " + firstName));
     }
 }

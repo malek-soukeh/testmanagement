@@ -10,6 +10,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/projects")
@@ -38,6 +39,26 @@ public class ProjectController {
         return projectService.getProjectById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteProject(@PathVariable Long id , @AuthenticationPrincipal UserDetails userDetails) {
+        projectService.deleteProject(id, userDetails.getUsername());
+        return ResponseEntity.noContent().build();
+    }
+    @PutMapping("/{id}")
+    public ResponseEntity<Project> updateProject(
+            @PathVariable Long id,
+            @RequestBody Project projectDetails,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Project updatedProject = projectService.updateProject(id , projectDetails, userDetails.getUsername());
+        return ResponseEntity.ok(updatedProject);
+    }
+
+    @GetMapping("/{projectId}/statistics")
+    public ResponseEntity<Map<String, Object>> getProjectStatistics(@PathVariable Long projectId) {
+        Map<String, Object> stats = projectService.getProjectStatistics(projectId);
+        return ResponseEntity.ok(stats);
     }
 
 }

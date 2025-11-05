@@ -47,8 +47,43 @@ public class TestSuiteService {
 
         return testSuiteRepository.findByProject(project);
     }
+    public TestSuite updateTestSuite(Long suiteId, TestSuite suiteDetails, String username) {
+        TestSuite suite = testSuiteRepository.findById(suiteId)
+                .orElseThrow(() -> new RuntimeException("Test Suite not found with id: " + suiteId));
+
+        User user = userService.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!suite.getCreatedBy().getId().equals(user.getId())) {
+            throw new RuntimeException("You can update only your own test suites");
+        }
+
+        if (suiteDetails.getSuiteName() != null) {
+            suite.setSuiteName(suiteDetails.getSuiteName());
+        }
+        if (suiteDetails.getDescription() != null) {
+            suite.setDescription(suiteDetails.getDescription());
+        }
+        suite.setUpdatedAt(LocalDateTime.now());
+
+        return testSuiteRepository.save(suite);
+    }
 
     public Optional<TestSuite> getTestSuite(Long testSuiteId) {
         return testSuiteRepository.findById(testSuiteId);
+    }
+
+    public void deleteTestSuite(Long suiteId, String username) {
+        TestSuite suite = testSuiteRepository.findById(suiteId)
+                .orElseThrow(() -> new RuntimeException("Test Suite not found with id: " + suiteId));
+
+        User user = userService.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!suite.getCreatedBy().getId().equals(user.getId())) {
+            throw new RuntimeException("You can only delete your own test suites");
+        }
+
+        testSuiteRepository.delete(suite);
     }
 }

@@ -1,48 +1,35 @@
 package com.example.testmanagement.Controllers;
 
-import com.example.testmanagement.Entities.Role;
-import com.example.testmanagement.Entities.User;
-import com.example.testmanagement.Repository.UserRepository;
 import com.example.testmanagement.Requests.LoginRequest;
-import com.example.testmanagement.Responses.LoginResponse;
-import com.example.testmanagement.Security.JwtUtil;
-import org.springframework.security.authentication.*;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import com.example.testmanagement.Requests.SignUpRequest;
+import com.example.testmanagement.Responses.JwtAuthenticationResponse;
+import com.example.testmanagement.Services.AuthService;
+import lombok.AllArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
-
 @RestController
+@AllArgsConstructor
 @RequestMapping("/api/auth")
 public class AuthController {
-    private final AuthenticationManager authManager;
-    private final JwtUtil jwtUtil;
-    private final UserRepository userRepo;
-    private final PasswordEncoder passwordEncoder;
+    private final AuthService  authService;
 
-    public AuthController(AuthenticationManager authManager, JwtUtil jwtUtil,
-                          UserRepository userRepo, PasswordEncoder passwordEncoder) {
-        this.authManager = authManager;
-        this.jwtUtil = jwtUtil;
-        this.userRepo = userRepo;
-        this.passwordEncoder = passwordEncoder;
-    }
-
-    @PostMapping("/register")
-    public String register(@RequestBody User user) {
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        userRepo.save(user);
-        return "User registered!";
-    }
 
     @PostMapping("/login")
-    public LoginResponse login(@RequestBody LoginRequest request) {
-        authManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-        );
-        User user = userRepo.findByEmail(request.getEmail()).orElseThrow(()-> new RuntimeException("User not found!"));
-        String token = jwtUtil.generateToken(request.getEmail());
-        List<Role> roles = user.getRoles().stream().toList();
-        return new LoginResponse(token, user.getId(), user.getEmail(),  roles);
+    public ResponseEntity<JwtAuthenticationResponse> login(@RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.signin(request));
     }
+    @PostMapping("/signup")
+    public ResponseEntity<JwtAuthenticationResponse> signup(@RequestBody SignUpRequest request) {
+        return ResponseEntity.ok(authService.signup(request));
+    }
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(Authentication authentication) {
+        return ResponseEntity.ok(authentication.getPrincipal());
+    }
+
+
+
+
 }

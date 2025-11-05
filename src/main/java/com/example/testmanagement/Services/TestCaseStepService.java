@@ -9,9 +9,11 @@ import com.example.testmanagement.Repository.UserRepository;
 import com.example.testmanagement.Requests.CreateTestCaseStepRequest;
 import com.example.testmanagement.Requests.UpdateTestCaseStepRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -22,6 +24,8 @@ public class TestCaseStepService {
     private final TestCaseStepRepository testCaseStepRepository;
     private final TestCaseRepository testCaseRepository;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
+
 
     public TestCaseStep createTestCaseStep(CreateTestCaseStepRequest request, String username) {
         User user = userRepository.findByEmail(username).orElseThrow(() -> new RuntimeException("User not found!"));
@@ -91,7 +95,7 @@ public class TestCaseStepService {
         if (request.getExpectedResult() != null) step.setExpectedResult(request.getExpectedResult());
         if (request.getActualResult() != null) step.setActualResult(request.getActualResult());
         if (request.getResult() != null) step.setResult(request.getResult());
-
+        step.setUpdatedAt(LocalDateTime.now());
         return testCaseStepRepository.save(step);
     }
 
@@ -103,6 +107,27 @@ public class TestCaseStepService {
         if (actualResult != null) {
             step.setActualResult(actualResult);
         }
+        step.setUpdatedAt(LocalDateTime.now());
+        TestCase testCase = step.getTestCase();
+        List<TestCaseStep> steps = testCaseStepRepository.findByTestCaseId(testCase.getId());
+        boolean allPassed = steps.stream().allMatch(s -> s.getResult() == TestCaseStep.CaseResult.PASSED);
+        if (allPassed) {
+            testCase.setStatus(TestCase.Status.PASSED);
+        } else {
+            boolean anyFailed = steps.stream().anyMatch(s -> s.getResult() == TestCaseStep.CaseResult.FAILED);
+            if (anyFailed) {
+                testCase.setStatus(TestCase.Status.FAILED);
+            } else {
+                testCase.setStatus(TestCase.Status.DRAFT);
+            }
+        }
+        testCase.setUpdatedAt(LocalDateTime.now());
+        testCaseRepository.save(testCase);
+
+        messagingTemplate.convertAndSend("/topic/test-status", Map.of(
+                "testCaseId", testCase.getId(),
+                "status", testCase.getStatus().name()
+        ));
 
         return testCaseStepRepository.save(step);
     }

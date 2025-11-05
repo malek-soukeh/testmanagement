@@ -15,7 +15,7 @@ import java.util.*;
 @Table(name = "test_results")
 public class TestResult {
 
-    public enum ResultStatus { PASSED, FAILED, BLOCKED, SKIPPED, NOT_EXECUTED }
+    public enum ResultStatus { PASSED, FAILED , PENDING,RUNNING}
 
     @Id  @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -29,12 +29,14 @@ public class TestResult {
     private TestCase testCase;
 
     @Enumerated(EnumType.STRING)
-    private ResultStatus status = ResultStatus.NOT_EXECUTED;
+    private ResultStatus status = ResultStatus.FAILED;
 
     private String actualResult;
     private Integer executionTimeSeconds;
     private LocalDateTime executedAt;
     private String notes;
+    private String testName;
+    private String testType;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "executed_by")

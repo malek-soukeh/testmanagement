@@ -17,6 +17,9 @@ public class TestCaseStepResponse {
     private String createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String actionType;
+    private String actionTarget;
+    private String actionValue;
 
     public static TestCaseStepResponse fromEntity(TestCaseStep step) {
         TestCaseStepResponse response = new TestCaseStepResponse();
@@ -29,6 +32,9 @@ public class TestCaseStepResponse {
         response.setCreatedBy(step.getCreatedBy().getEmail());
         response.setCreatedAt(step.getCreatedAt());
         response.setUpdatedAt(step.getUpdatedAt());
+        response.setActionType(step.getActionType());
+        response.setActionTarget(step.getActionTarget());
+        response.setActionValue(step.getActionValue());
         return response;
     }
 }
