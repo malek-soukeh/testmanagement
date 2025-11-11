@@ -24,40 +24,16 @@ import java.util.List;
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ROLE_ADMIN','ROLE_TESTER')")
 public class TestExecutionController {
-    @Data
-    @AllArgsConstructor
-    public class TestReport {
-        private Long testCaseId;
-        private String testCaseTitle;
-        private List<StepResultDto> steps;
-    }
-
-    @Data
-    @AllArgsConstructor
-    public class StepResultDto {
-        private String stepName;
-        private boolean success;
-        private String screenshotBase64;
-    }
 
     private final TestCaseService testCaseService;
+    private final JenkinsService jenkinsService;
     @PostMapping("/{id}/run")
-    public ResponseEntity<TestReport> runTest(@PathVariable Long id) throws IOException {
-        TestCase testCase = testCaseService.getTestCaseById(id);
-
-        // Convertir TestCase en SeleniumScenario
-        SeleniumScenario scenario = testCaseService.buildSeleniumScenario(testCase);
-
-        // Exécuter le scénario
-        List<SeleniumRunner.StepResult> results = SeleniumRunner.runScenario(scenario);
-
-        // Préparer DTO pour le frontend
-        List<StepResultDto> stepDtos = results.stream()
-                .map(r -> new StepResultDto(r.getStepName(), r.isSuccess(), r.getScreenshotBase64()))
-                .toList();
-
-        TestReport report = new TestReport(testCase.getId(), testCase.getTitle(), stepDtos);
-        return ResponseEntity.ok(report);
+    public ResponseEntity<Void> runTest(@PathVariable Long id) {
+        // Vérifie que le test existe
+        testCaseService.getTestCaseById(id);
+        // Déclenche Jenkins
+        jenkinsService.triggerJenkinsJob(id);
+        return ResponseEntity.accepted().build();
     }
 
 }

@@ -16,6 +16,8 @@ import com.example.testmanagement.seleniumrunner.SeleniumStep;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,9 +34,11 @@ public class TestCaseService {
     private final TestCaseRepository testCaseRepository;
     private final UserRepository userRepository;
     private final TestCaseStepRepository testCaseStepRepository;
-    private final JenkinsService jenkinsService;
-    private final SimpMessagingTemplate messagingTemplate;
-
+    private JenkinsService jenkinsService;
+    @Autowired
+    public void setJenkinsService(@Lazy JenkinsService jenkinsService) {
+        this.jenkinsService = jenkinsService;
+    }
     public TestCase createTestCase(CreateTestCaseRequest request, String username,Long testSuiteId) {
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new RuntimeException("User not found: " + username));

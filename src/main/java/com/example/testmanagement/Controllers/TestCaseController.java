@@ -6,9 +6,8 @@ import com.example.testmanagement.Requests.CreateTestCaseRequest;
 import com.example.testmanagement.Requests.UpdateTestCaseRequest;
 import com.example.testmanagement.Responses.TestCaseResponse;
 import com.example.testmanagement.Services.JenkinsService;
-import com.example.testmanagement.Services.SeleniumExecutionService;
 import com.example.testmanagement.Services.TestCaseService;
-import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,14 +22,20 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/test-case/{testsuiteId}")
-@RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ROLE_ADMIN','ROLE_TESTER')")
 public class TestCaseController {
 
     private final TestCaseService testCaseService;
     private final JenkinsService jenkinsService;
     private final TestCaseRepository testCaseRepository;
-private final JenkinsService jenkinsService;
+
+    public TestCaseController(TestCaseService testCaseService, 
+                               @Lazy JenkinsService jenkinsService,
+                               TestCaseRepository testCaseRepository) {
+        this.testCaseService = testCaseService;
+        this.jenkinsService = jenkinsService;
+        this.testCaseRepository = testCaseRepository;
+    }
 
     @PostMapping
     public ResponseEntity<TestCaseResponse> createTestCase(

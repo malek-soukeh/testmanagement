@@ -6,8 +6,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Bean;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -23,18 +22,26 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 public class JenkinsService {
-    private final RestTemplate restTemplate = new RestTemplate();
-    private final SimpMessagingTemplate messagingTemplate;
+    private  RestTemplate restTemplate ;
+    private SimpMessagingTemplate messagingTemplate; // injecté plus tard
     private final TestCaseRepository testCaseRepository;
-
+    @Autowired
+    public void setMessagingTemplate(SimpMessagingTemplate messagingTemplate) {
+        this.messagingTemplate = messagingTemplate;
+    }
 
     private final String jenkinsUrl = "http://10.0.0.15:8080";
     private final String jobName = "selenium-runner";
     private final String username = "admin";
     private final String apiToken = "11d1741c72084f7b0ebd2144638320e8d2";
     private final ObjectMapper objectMapper;
+    public JenkinsService(TestCaseRepository testCaseRepository,
+                          ObjectMapper objectMapper) {
+        this.testCaseRepository = testCaseRepository;
+        this.objectMapper = objectMapper;
+        this.restTemplate = new RestTemplate(); // instanciation locale, pas besoin de final field injecté
+    }
 
     public void triggerJenkinsJob(Long testCaseId) {
         updateStatus(testCaseId, TestCase.Status.RUNNING);
@@ -194,10 +201,6 @@ public class JenkinsService {
     public static class TestStatusNotification {
         private Long testCaseId;
         private String status;;
-    }
-    @Bean
-    public ObjectMapper objectMapper() {
-        return new ObjectMapper();
     }
 
 }
