@@ -30,7 +30,7 @@ public class TestCaseController {
     private final TestCaseService testCaseService;
     private final JenkinsService jenkinsService;
     private final TestCaseRepository testCaseRepository;
-    private final SeleniumExecutionService seleniumService;
+private final JenkinsService jenkinsService;
 
     @PostMapping
     public ResponseEntity<TestCaseResponse> createTestCase(
@@ -112,28 +112,7 @@ public class TestCaseController {
         Map<String, Long> statistics = testCaseService.getTestCaseStatistics();
         return ResponseEntity.ok(statistics);
     }
-    @PostMapping("/{testCaseId}/trigger-jenkins")
-    public ResponseEntity<Map<String, Object>> triggerJenkinsTestCase(
-            @PathVariable Long testsuiteId,
-            @PathVariable Long testCaseId,
-            @AuthenticationPrincipal UserDetails userDetails) {
 
-        // Récupérer les infos Jenkins depuis config ou propriétés
-        String jenkinsJobUrl = "http://jenkins-server/job/selenium-run/buildWithParameters";
-        String jenkinsUser = "jenkinsUser";
-        String jenkinsToken = "jenkinsToken";
-
-        // Déclencher le test
-        Map<String, Object> result = seleniumService.triggerTestCaseViaJenkins(
-                testCaseId,
-                getUserIdFromUsername(userDetails.getUsername()), // méthode utilitaire pour récupérer l'id utilisateur
-                jenkinsJobUrl,
-                jenkinsUser,
-                jenkinsToken
-        );
-
-        return ResponseEntity.ok(result);
-    }
     private Long getUserIdFromUsername(String firstName) {
         return testCaseService.getUserIdByUsername(firstName);
     }

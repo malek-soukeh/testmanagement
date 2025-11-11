@@ -47,6 +47,7 @@ public class TestCaseStep {
     private LocalDateTime updatedAt;
     private String actionType;
     private String actionTarget;
+    @Column(columnDefinition = "TEXT")
     private String actionValue;
 
 }

@@ -30,15 +30,7 @@ public class SeleniumExecutionService {
     private final TestResultRepository testResultRepo;
     private final UserRepository userRepo;
 
-    /**
-     * Déclenche un test case via Jenkins
-     * @param testCaseId l'id du test case à exécuter
-     * @param userId l'id de l'utilisateur qui déclenche
-     * @param jenkinsJobUrl l'URL du job Jenkins
-     * @param jenkinsUser utilisateur Jenkins
-     * @param jenkinsToken token Jenkins
-     * @return Map contenant l'id du run et le status initial
-     */
+
     public Map<String, Object> triggerTestCaseViaJenkins(Long testCaseId, Long userId,
                                                          String jenkinsJobUrl, String jenkinsUser,
                                                          String jenkinsToken) {
@@ -52,8 +44,8 @@ public class SeleniumExecutionService {
         // Créer un TestRun dans la DB
         TestRun run = new TestRun();
         run.setRunName("Jenkins Run - " + testCase.getTitle() + " - " + LocalDateTime.now());
-        run.setStatus(TestRun.RunStatus.RUNNING);
         run.setTestSuite(testCase.getTestSuite());
+        run.setStatus(TestRun.RunStatus.RUNNING);
         run.setCreatedBy(user);
         run.setCreatedAt(LocalDateTime.now());
         run.setStartedAt(LocalDateTime.now());
@@ -142,7 +134,7 @@ public class SeleniumExecutionService {
     /**
      * Méthode utilitaire pour récupérer le dernier résultat d'un TestRun
      */
-    public TestResult getLastTestResult(Long testResultId) {
+    public TestResult getTestResult(Long testResultId) {
         return testResultRepo.findById(testResultId)
                 .orElseThrow(() -> new RuntimeException("TestResult not found"));
     }

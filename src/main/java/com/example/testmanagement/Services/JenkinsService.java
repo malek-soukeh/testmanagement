@@ -2,9 +2,12 @@ package com.example.testmanagement.Services;
 
 import com.example.testmanagement.Entities.TestCase;
 import com.example.testmanagement.Repository.TestCaseRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -13,6 +16,10 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -24,36 +31,79 @@ public class JenkinsService {
 
 
     private final String jenkinsUrl = "http://10.0.0.15:8080";
-    private final String jobName = "test";
+    private final String jobName = "selenium-runner";
     private final String username = "admin";
     private final String apiToken = "11d1741c72084f7b0ebd2144638320e8d2";
+    private final ObjectMapper objectMapper;
 
     public void triggerJenkinsJob(Long testCaseId) {
         updateStatus(testCaseId, TestCase.Status.RUNNING);
         messagingTemplate.convertAndSend("/topic/test-status", new TestStatusNotification(testCaseId, "RUNNING"));
         new Thread(() -> {
             try {
+                TestCase testCase = testCaseRepository.findById(testCaseId)
+                        .orElseThrow(() -> new RuntimeException("Test case not found"));
+
+                String scenarioJson = buildSeleniumScenarioJson(testCase);
+
+                String encodedScenario = URLEncoder.encode(scenarioJson, StandardCharsets.UTF_8);
+                String url = String.format("%s/job/%s/buildWithParameters?SCENARIO_JSON=%s",
+                        jenkinsUrl, jobName, encodedScenario);
+
                 HttpHeaders headers = new HttpHeaders();
-                String url = String.format("%s/job/%s/build", jenkinsUrl, jobName);
                 headers.setBasicAuth(username, apiToken);
                 HttpEntity<String> entity = new HttpEntity<>(headers);
-                restTemplate.exchange(url, HttpMethod.POST,entity, String.class);
-                Thread.sleep(8000); // attendre le démarrage du job
+
+                restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+                Thread.sleep(8000); // Attendre le démarrage du job
+
                 int lastBuild = getLastBuildNumber();
                 boolean building;
                 do {
                     Thread.sleep(10000);
                     building = isBuilding(lastBuild);
                 } while (building);
+
                 boolean success = isBuildSuccessful(lastBuild);
                 TestCase.Status finalStatus = success ? TestCase.Status.PASSED : TestCase.Status.FAILED;
                 updateStatus(testCaseId, finalStatus);
-                messagingTemplate.convertAndSend("/topic/test-status", new TestStatusNotification(testCaseId, finalStatus.toString()));
-            } catch (InterruptedException e) {
+
+                messagingTemplate.convertAndSend("/topic/test-status",
+                        new TestStatusNotification(testCaseId, finalStatus.toString()));
+            } catch (InterruptedException | RuntimeException e) {
                 updateStatus(testCaseId, TestCase.Status.FAILED);
-                messagingTemplate.convertAndSend("/topic/test-status", new TestStatusNotification(testCaseId, "FAILED"));
+                messagingTemplate.convertAndSend("/topic/test-status",
+                        new TestStatusNotification(testCaseId, "FAILED"));
                 e.printStackTrace();
-            }   }).start();}
+            }
+        }).start();
+    }
+    private String buildSeleniumScenarioJson(TestCase testCase) {
+        try {
+            Map<String, Object> scenario = new HashMap<>();
+            scenario.put("testCaseId", testCase.getId());
+            scenario.put("title", testCase.getTitle());
+            scenario.put("url", testCase.getTestUrl());
+
+            // Mapping des steps
+            List<Map<String, Object>> steps = (testCase.getTestCaseSteps() != null)
+                    ? testCase.getTestCaseSteps().stream().map(step -> {
+                Map<String, Object> map = new HashMap<>();
+                map.put("stepName", step.getStepName());
+                map.put("actionType", step.getActionType());
+                map.put("actionTarget", step.getActionTarget());
+                map.put("actionValue", step.getActionValue());
+                map.put("expectedResult", step.getExpectedResult());
+                return map;
+            }).toList()
+                    : List.of();
+
+            scenario.put("steps", steps);
+            return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(scenario);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to build scenario JSON", e);
+        }
+    }
 
     private void updateStatus(Long id, TestCase.Status status) {
         testCaseRepository.findById(id).ifPresent(tc -> {
@@ -139,11 +189,15 @@ public class JenkinsService {
         private boolean success;
     }
 
-
     @Data
     @AllArgsConstructor
     public static class TestStatusNotification {
         private Long testCaseId;
         private String status;;
     }
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper();
+    }
+
 }

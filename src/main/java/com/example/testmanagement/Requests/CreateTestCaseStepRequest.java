@@ -11,4 +11,7 @@ public class CreateTestCaseStepRequest {
     @NotBlank(message = "Expected Result is required")
     private String expectedResult;
     private Long testCaseId;
+    private String actionType;   // ex: click, type, verify, open, title, screenshot
+    private String actionTarget; // ex: #login-btn ou //input[@id='username']
+    private String actionValue;
 }

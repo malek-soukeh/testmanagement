@@ -1,5 +1,7 @@
 package com.example.testmanagement.Controllers;
 
+import com.example.testmanagement.Entities.Role;
+import com.example.testmanagement.Entities.User;
 import com.example.testmanagement.Requests.LoginRequest;
 import com.example.testmanagement.Requests.SignUpRequest;
 import com.example.testmanagement.Responses.JwtAuthenticationResponse;
@@ -8,6 +10,10 @@ import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @AllArgsConstructor
@@ -26,6 +32,13 @@ public class AuthController {
     }
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", user.getId());
+        response.put("email", user.getEmail());
+        response.put("roles", user.getRoles().stream()
+                .map(Role::getName)
+                .collect(Collectors.toList()));
         return ResponseEntity.ok(authentication.getPrincipal());
     }
 

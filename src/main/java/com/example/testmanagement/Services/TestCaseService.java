@@ -10,12 +10,18 @@ import com.example.testmanagement.Repository.TestSuiteRepository;
 import com.example.testmanagement.Repository.UserRepository;
 import com.example.testmanagement.Requests.CreateTestCaseRequest;
 import com.example.testmanagement.Requests.UpdateTestCaseRequest;
+import com.example.testmanagement.Responses.TestCaseResponse;
+import com.example.testmanagement.seleniumrunner.SeleniumScenario;
+import com.example.testmanagement.seleniumrunner.SeleniumStep;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -54,6 +60,9 @@ public class TestCaseService {
                testCaseStep.setExpectedResult(stepReq.getExpectedResult());
                testCaseStep.setCreatedBy(user);
                testCaseStep.setTestCase(savedTestCase);
+                testCaseStep.setActionType(stepReq.getActionType());
+                testCaseStep.setActionTarget(stepReq.getActionTarget());
+                testCaseStep.setActionValue(stepReq.getActionValue());
                return testCaseStep;
             }).toList();
             testCaseStepRepository.saveAll(steps);
@@ -153,12 +162,59 @@ public class TestCaseService {
                 testCase.getTestType() != TestCase.TestType.PERFORMANCE) {
             throw new RuntimeException("Only automated or performance tests can be triggered");
         }
+        String scenarioJson = buildSeleniumScenarioJson(testCase);
         jenkinsService.triggerJenkinsJob(id);
+        testCase.setStatus(TestCase.Status.RUNNING);
+        testCaseRepository.save(testCase);
     }
+
 
     public Long getUserIdByUsername(String firstName ) {
         return userRepository.findByFirstName(firstName)
                 .map(User::getId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + firstName));
     }
+
+    public String buildSeleniumScenarioJson(TestCase testCase) {
+        Map<String, Object> scenario = new HashMap<>();
+        scenario.put("testCaseId", testCase.getId());
+        scenario.put("title", testCase.getTitle());
+        scenario.put("url", testCase.getPrecondition()); // ou testUrl selon ton modèle
+
+        List<Map<String, Object>> steps = testCase.getTestCaseSteps().stream().map(step -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("stepName", step.getStepName());
+            map.put("actionType", step.getActionType());
+            map.put("actionTarget", step.getActionTarget());
+            map.put("actionValue", step.getActionValue());
+            map.put("expectedResult", step.getExpectedResult());
+            return map;
+        }).toList();
+
+
+        scenario.put("steps", steps);
+        try {
+            return new ObjectMapper().writeValueAsString(scenario);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to build scenario JSON", e);
+        }
+    }
+
+    public SeleniumScenario buildSeleniumScenario(TestCase testCase) {
+        SeleniumScenario scenario = new SeleniumScenario();
+        scenario.setUrl(testCase.getTestUrl());
+        scenario.setSteps(testCase.getTestCaseSteps().stream()
+                .map(step -> new SeleniumStep(
+                        step.getStepName(),
+                        step.getActionType(),
+                        step.getActionTarget(),
+                        step.getActionValue(),
+                        step.getExpectedResult()
+                ))
+                .toList());
+        return scenario;
+    }
+
+
+
 }
