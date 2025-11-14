@@ -15,7 +15,7 @@ import java.util.*;
 @Table(name = "test_results")
 public class TestResult {
 
-    public enum ResultStatus { PASSED, FAILED , PENDING,RUNNING}
+    public enum ResultStatus { RUNNING, PASSED, FAILED , PENDING}
 
     @Id  @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

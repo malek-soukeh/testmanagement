@@ -158,7 +158,7 @@ public class TestCaseService {
                 );
     }
     public Long getUserIdByUsername(String firstName ) {
-        return userRepository.findByFirstName(firstName)
+        return userRepository.findByEmail(firstName)
                 .map(User::getId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + firstName));
     }
