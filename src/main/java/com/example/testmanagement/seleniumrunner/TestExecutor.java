@@ -1,11 +1,13 @@
 package com.example.testmanagement.seleniumrunner;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 import io.github.bonigarcia.wdm.WebDriverManager;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -19,6 +21,7 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.File;
 import java.nio.file.*;
+import java.time.Duration;
 import java.util.*;
 
 public class TestExecutor {
@@ -71,7 +74,11 @@ public class TestExecutor {
         try {
             if (url != null && !url.isBlank()) {
                 driver.get(url);
-                Thread.sleep(500);
+                // Attendre que la page soit complètement chargée
+                Thread.sleep(2000);
+                // Attendre que le document soit prêt
+                WebDriverWait pageWait = new WebDriverWait(driver, Duration.ofSeconds(10));
+                pageWait.until(webDriver -> ((JavascriptExecutor) webDriver).executeScript("return document.readyState").equals("complete"));
             }
 
             int i=0;

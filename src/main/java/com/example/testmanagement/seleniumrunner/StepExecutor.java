@@ -57,14 +57,60 @@ public class StepExecutor {
                     break;
 
                 case "click":
-                    WebElement clickElement = wait.until(ExpectedConditions.elementToBeClickable(by));
+                    // Pour les composants PrimeNG comme p-button, essayer d'abord le sélecteur direct
+                    // puis chercher le bouton à l'intérieur si nécessaire
+                    WebElement clickElement;
+                    try {
+                        clickElement = wait.until(ExpectedConditions.elementToBeClickable(by));
+                    } catch (Exception e) {
+                        // Si l'élément n'est pas trouvé, essayer de trouver un bouton à l'intérieur
+                        // (pour les composants PrimeNG comme p-button)
+                        if (selectorType.equals("xpath") && target.contains("button")) {
+                            // Essayer de trouver le bouton dans un p-button
+                            By fallbackBy = By.xpath("//p-button//button | //p-button/button");
+                            try {
+                                clickElement = wait.until(ExpectedConditions.elementToBeClickable(fallbackBy));
+                            } catch (Exception e2) {
+                                // Essayer par texte
+                                if (target.contains("Sign In") || target.contains("sign in")) {
+                                    By textBy = By.xpath("//button[contains(text(), 'Sign In') or contains(text(), 'sign in')]");
+                                    clickElement = wait.until(ExpectedConditions.elementToBeClickable(textBy));
+                                } else {
+                                    throw e;
+                                }
+                            }
+                        } else {
+                            throw e;
+                        }
+                    }
                     clickElement.click();
                     break;
 
                 case "sendkeys":
                 case "type":
                 case "input":
-                    WebElement inputElement = wait.until(ExpectedConditions.visibilityOfElementLocated(by));
+                    // Pour les composants PrimeNG comme p-password, essayer d'abord le sélecteur direct
+                    // puis chercher l'input à l'intérieur si nécessaire
+                    WebElement inputElement;
+                    try {
+                        inputElement = wait.until(ExpectedConditions.visibilityOfElementLocated(by));
+                    } catch (Exception e) {
+                        // Si l'élément n'est pas trouvé, essayer de trouver un input à l'intérieur
+                        // (pour les composants PrimeNG comme p-password)
+                        if (selectorType.equals("css") && target.startsWith("#")) {
+                            String id = target.substring(1);
+                            By fallbackBy = By.cssSelector("#" + id + " input, #" + id + " input[type='password'], #" + id + " input[type='text']");
+                            try {
+                                inputElement = wait.until(ExpectedConditions.visibilityOfElementLocated(fallbackBy));
+                            } catch (Exception e2) {
+                                // Essayer avec XPath
+                                By xpathBy = By.xpath("//*[@id='" + id + "']//input");
+                                inputElement = wait.until(ExpectedConditions.visibilityOfElementLocated(xpathBy));
+                            }
+                        } else {
+                            throw e;
+                        }
+                    }
                     inputElement.clear();
                     inputElement.sendKeys(value == null ? "" : value);
                     break;
