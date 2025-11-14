@@ -10,19 +10,38 @@ import java.time.Duration;
 public class StepExecutor {
 
     private static final int TIMEOUT_SECONDS = 10;
+    
     private static By by(String selectorType, String target) {
         if (target == null) return null;
         if ("xpath".equalsIgnoreCase(selectorType)) return By.xpath(target);
         return By.cssSelector(target);
+    }
+    
+    private static String detectSelectorType(String target) {
+        if (target == null || target.isBlank()) return "css";
+        // Détection automatique des sélecteurs XPath
+        if (target.startsWith("//") || target.startsWith("./") || target.startsWith("(")) {
+            return "xpath";
+        }
+        // Si le sélecteur contient des caractères XPath typiques
+        if (target.contains("@") || (target.contains("[") && target.contains("]"))) {
+            return "xpath";
+        }
+        return "css";
     }
 
     public static boolean executeStep(WebDriver driver, SeleniumStep step) {
         try {
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(TIMEOUT_SECONDS));
             String action = (step.getActionType() == null) ? "" : step.getActionType().toLowerCase();
-            String selectorType = (step.getSelectorType() == null) ? "css" : step.getSelectorType().toLowerCase();
             String target = step.getActionTarget();
             String value = step.getActionValue();
+            
+            // Détection automatique du type de sélecteur si non spécifié
+            String selectorType = (step.getSelectorType() == null || step.getSelectorType().isBlank()) 
+                ? detectSelectorType(target) 
+                : step.getSelectorType().toLowerCase();
+            
             By by = by(selectorType, target);
             switch (action) {
                 case "open":
@@ -37,6 +56,8 @@ public class StepExecutor {
                     break;
 
                 case "sendkeys":
+                case "type":
+                case "input":
                     WebElement inputElement = wait.until(ExpectedConditions.visibilityOfElementLocated(by));
                     inputElement.clear();
                     inputElement.sendKeys(value == null ? "" : value);
