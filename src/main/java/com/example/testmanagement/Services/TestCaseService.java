@@ -10,15 +10,9 @@ import com.example.testmanagement.Repository.TestSuiteRepository;
 import com.example.testmanagement.Repository.UserRepository;
 import com.example.testmanagement.Requests.CreateTestCaseRequest;
 import com.example.testmanagement.Requests.UpdateTestCaseRequest;
-import com.example.testmanagement.Responses.TestCaseResponse;
-import com.example.testmanagement.seleniumrunner.SeleniumScenario;
-import com.example.testmanagement.seleniumrunner.SeleniumStep;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -201,7 +195,9 @@ public class TestCaseService {
         }).collect(Collectors.toList());
         scenario.put("steps", steps);
         try {
-            return new ObjectMapper().writeValueAsString(scenario);
+            // Retourner un tableau avec un seul scénario pour compatibilité avec Jenkins
+            List<Map<String, Object>> scenarios = List.of(scenario);
+            return new ObjectMapper().writeValueAsString(scenarios);
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Failed to build scenario JSON", e);
         }

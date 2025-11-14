@@ -1,7 +1,6 @@
 package com.example.testmanagement.seleniumrunner;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.openqa.selenium.By;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
@@ -36,7 +35,27 @@ public class TestExecutor {
         else json = input;
 
         ObjectMapper mapper = new ObjectMapper();
-        Map<String, Object> scenario = mapper.readValue(json, Map.class);
+        
+        // Gérer à la fois un tableau de scénarios et un scénario unique
+        Object parsed = mapper.readValue(json, Object.class);
+        Map<String, Object> scenario;
+        
+        if (parsed instanceof List) {
+            // Si c'est un tableau, prendre le premier scénario
+            List<?> scenarios = (List<?>) parsed;
+            if (scenarios.isEmpty()) {
+                System.out.println("Empty scenario array provided");
+                System.exit(1);
+            }
+            scenario = (Map<String, Object>) scenarios.get(0);
+        } else if (parsed instanceof Map) {
+            // Si c'est un objet unique
+            scenario = (Map<String, Object>) parsed;
+        } else {
+            System.out.println("Invalid JSON format: expected array or object");
+            System.exit(1);
+            return;
+        }
 
         String title = (String) scenario.get("title");
         String url = (String) scenario.get("url");
