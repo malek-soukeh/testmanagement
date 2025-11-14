@@ -42,6 +42,12 @@ public class StepExecutor {
                 ? detectSelectorType(target) 
                 : step.getSelectorType().toLowerCase();
             
+            System.out.println("Executing step: " + step.getStepName());
+            System.out.println("  Action: " + action);
+            System.out.println("  Target: " + target);
+            System.out.println("  Selector Type: " + selectorType);
+            System.out.println("  Value: " + (value != null ? value : "null"));
+            
             By by = by(selectorType, target);
             switch (action) {
                 case "open":
@@ -136,6 +142,10 @@ public class StepExecutor {
             return true;
 
         } catch (Exception e) {
+            System.err.println("Error executing step: " + step.getStepName());
+            System.err.println("  Action: " + step.getActionType());
+            System.err.println("  Target: " + step.getActionTarget());
+            System.err.println("  Error: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
