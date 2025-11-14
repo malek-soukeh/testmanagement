@@ -2,9 +2,7 @@ package com.example.testmanagement.Services;
 
 import com.example.testmanagement.Entities.*;
 import com.example.testmanagement.Repository.*;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -61,18 +59,23 @@ public class SeleniumExecutionService {
         run.getTestResults().add(result);
         testRunRepo.save(run);
 
-        // Déclencher le job Jenkins
-        String jenkinsResponse = triggerJenkinsJob(jenkinsJobUrl, scenarioJson, jenkinsUser, jenkinsToken);
+        // Vérifier les paramètres avant d'appeler Jenkins
         Objects.requireNonNull(scenarioJson, "scenarioJson cannot be null");
         Objects.requireNonNull(jenkinsUser, "jenkinsUser cannot be null");
         Objects.requireNonNull(jenkinsToken, "jenkinsToken cannot be null");
+        Objects.requireNonNull(jenkinsJobUrl, "jenkinsJobUrl cannot be null");
 
-        return Map.of(
-                "runId", run.getId(),
-                "testResultId", result.getId(),
-                "status", run.getStatus(),
-                "jenkinsResponse", jenkinsResponse
-        );
+        // Déclencher le job Jenkins
+        String jenkinsResponse = triggerJenkinsJob(jenkinsJobUrl, scenarioJson, jenkinsUser, jenkinsToken);
+        
+        // Utiliser HashMap pour permettre les valeurs null
+        Map<String, Object> response = new HashMap<>();
+        response.put("runId", run.getId());
+        response.put("testResultId", result.getId());
+        response.put("status", run.getStatus() != null ? run.getStatus().name() : "UNKNOWN");
+        response.put("jenkinsResponse", jenkinsResponse != null ? jenkinsResponse : "Jenkins job triggered successfully");
+        
+        return response;
     }
     public String triggerJenkinsJob(String jenkinsJobUrl, String scenarioJson,
                                     String jenkinsUser, String jenkinsToken) {
