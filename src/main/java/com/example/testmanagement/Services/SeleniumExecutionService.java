@@ -5,11 +5,8 @@ import com.example.testmanagement.Repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
@@ -81,20 +78,24 @@ public class SeleniumExecutionService {
                                     String jenkinsUser, String jenkinsToken) {
         RestTemplate rest = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
         headers.setBasicAuth(jenkinsUser, jenkinsToken);
 
-        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("SCENARIO_JSON", scenarioJson);
+        // Encoder le JSON pour l'URL (buildWithParameters attend les paramètres en query string)
+        try {
+            String encodedJson = java.net.URLEncoder.encode(scenarioJson, java.nio.charset.StandardCharsets.UTF_8);
+            String urlWithParams = jenkinsJobUrl + "?SCENARIO_JSON=" + encodedJson;
+            
+            HttpEntity<String> request = new HttpEntity<>(headers);
+            ResponseEntity<String> resp = rest.postForEntity(urlWithParams, request, String.class);
 
-        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
-        ResponseEntity<String> resp = rest.postForEntity(jenkinsJobUrl, request, String.class);
+            if (!resp.getStatusCode().is2xxSuccessful()) {
+                throw new RuntimeException("Jenkins job trigger failed: " + resp.getStatusCode());
+            }
 
-        if (!resp.getStatusCode().is2xxSuccessful()) {
-            throw new RuntimeException("Jenkins job trigger failed: " + resp.getStatusCode());
+            return resp.getBody();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to trigger Jenkins job", e);
         }
-
-        return resp.getBody();
     }
     public TestResult getTestResult(Long testResultId) {
         return testResultRepo.findById(testResultId)
