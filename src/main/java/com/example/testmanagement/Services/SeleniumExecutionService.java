@@ -15,22 +15,15 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
 public class SeleniumExecutionService {
 
-    @Autowired
     private final TestCaseRepository testCaseRepo;
-    @Autowired
     private final TestRunRepository testRunRepo;
-    @Autowired
     private final TestResultRepository testResultRepo;
-    @Autowired
     private final UserRepository userRepo;
 
 
@@ -70,6 +63,9 @@ public class SeleniumExecutionService {
 
         // Déclencher le job Jenkins
         String jenkinsResponse = triggerJenkinsJob(jenkinsJobUrl, scenarioJson, jenkinsUser, jenkinsToken);
+        Objects.requireNonNull(scenarioJson, "scenarioJson cannot be null");
+        Objects.requireNonNull(jenkinsUser, "jenkinsUser cannot be null");
+        Objects.requireNonNull(jenkinsToken, "jenkinsToken cannot be null");
 
         return Map.of(
                 "runId", run.getId(),

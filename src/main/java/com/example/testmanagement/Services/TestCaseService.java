@@ -34,7 +34,6 @@ public class TestCaseService {
     private final TestCaseRepository testCaseRepository;
     private final UserRepository userRepository;
     private final TestCaseStepRepository testCaseStepRepository;
-    @Autowired
     private final SeleniumExecutionService seleniumExecutionService;
     public TestCase createTestCase(CreateTestCaseRequest request, String username,Long testSuiteId) {
         User user = userRepository.findByEmail(username)
