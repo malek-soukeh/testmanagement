@@ -73,12 +73,16 @@ public class TestExecutor {
         List<Map<String,Object>> stepSummaries = new ArrayList<>();
         try {
             if (url != null && !url.isBlank()) {
+                System.out.println("Loading URL: " + url);
                 driver.get(url);
                 // Attendre que la page soit complètement chargée
                 Thread.sleep(2000);
                 // Attendre que le document soit prêt
                 WebDriverWait pageWait = new WebDriverWait(driver, Duration.ofSeconds(10));
                 pageWait.until(webDriver -> ((JavascriptExecutor) webDriver).executeScript("return document.readyState").equals("complete"));
+                System.out.println("Page loaded: " + driver.getTitle());
+            } else {
+                System.out.println("WARNING: No URL provided, skipping page load");
             }
 
             int i=0;

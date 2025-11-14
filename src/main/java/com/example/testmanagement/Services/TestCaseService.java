@@ -112,14 +112,48 @@ public class TestCaseService {
             throw new RuntimeException("You can only update your own test cases");
         }
 
+        // Mettre à jour les champs de base
         if (request.getTitle() != null) testCase.setTitle(request.getTitle());
         if (request.getDescription() != null) testCase.setDescription(request.getDescription());
         if (request.getPrecondition() != null) testCase.setPrecondition(request.getPrecondition());
         if (request.getTestType() != null) testCase.setTestType(request.getTestType());
         if (request.getPriority() != null) testCase.setPriority(request.getPriority());
         if (request.getStatus() != null) testCase.setStatus(request.getStatus());
+        if (request.getTestUrl() != null) testCase.setTestUrl(request.getTestUrl());
+        
+        // Mettre à jour la date de modification
+        testCase.setUpdatedAt(LocalDateTime.now());
 
-        return testCaseRepository.save(testCase);
+        // Sauvegarder le test case d'abord
+        TestCase savedTestCase = testCaseRepository.save(testCase);
+
+        // Gérer la mise à jour des steps si fournis
+        if (request.getSteps() != null) {
+            // Supprimer tous les anciens steps
+            List<TestCaseStep> existingSteps = testCaseStepRepository.findByTestCaseId(id);
+            if (!existingSteps.isEmpty()) {
+                testCaseStepRepository.deleteAll(existingSteps);
+            }
+
+            // Créer les nouveaux steps
+            if (!request.getSteps().isEmpty()) {
+                List<TestCaseStep> newSteps = request.getSteps().stream().map(stepReq -> {
+                    TestCaseStep testCaseStep = new TestCaseStep();
+                    testCaseStep.setStepName(stepReq.getStepName());
+                    testCaseStep.setExpectedResult(stepReq.getExpectedResult());
+                    testCaseStep.setCreatedBy(user);
+                    testCaseStep.setTestCase(savedTestCase);
+                    testCaseStep.setActionType(stepReq.getActionType());
+                    testCaseStep.setActionTarget(stepReq.getActionTarget());
+                    testCaseStep.setActionValue(stepReq.getActionValue());
+                    testCaseStep.setCreatedAt(LocalDateTime.now());
+                    return testCaseStep;
+                }).toList();
+                testCaseStepRepository.saveAll(newSteps);
+            }
+        }
+
+        return savedTestCase;
     }
 
     public void deleteTestCase(Long id, String username) {

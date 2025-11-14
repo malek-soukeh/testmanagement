@@ -133,29 +133,43 @@ public class StepExecutor {
                     
                     // Essai 1: Sélecteur direct
                     try {
+                        System.out.println("  Trying direct selector: " + by);
                         inputElement = wait.until(ExpectedConditions.visibilityOfElementLocated(by));
+                        System.out.println("  ✓ Found element with direct selector");
                     } catch (Exception e) {
+                        System.out.println("  ✗ Direct selector failed: " + e.getMessage());
                         lastException = e;
                         // Essai 2: Si c'est un ID CSS, essayer directement par ID
                         if (selectorType.equals("css") && target.startsWith("#")) {
+                            System.out.println("  Trying fallback strategies for ID: " + target);
                             String id = target.substring(1);
                             try {
                                 // Essayer directement l'ID (pour les inputs directs)
+                                System.out.println("    Trying By.id(" + id + ")");
                                 By idBy = By.id(id);
                                 inputElement = wait.until(ExpectedConditions.visibilityOfElementLocated(idBy));
+                                System.out.println("    ✓ Found element with By.id");
                             } catch (Exception e2) {
+                                System.out.println("    ✗ By.id failed: " + e2.getMessage());
                                 // Essai 3: Chercher un input à l'intérieur (pour les composants PrimeNG)
                                 try {
+                                    System.out.println("    Trying CSS selector with input inside");
                                     By fallbackBy = By.cssSelector("#" + id + " input, #" + id + " input[type='password'], #" + id + " input[type='text']");
                                     inputElement = wait.until(ExpectedConditions.visibilityOfElementLocated(fallbackBy));
+                                    System.out.println("    ✓ Found element with CSS fallback");
                                 } catch (Exception e3) {
+                                    System.out.println("    ✗ CSS fallback failed: " + e3.getMessage());
                                     // Essai 4: XPath pour trouver l'input
                                     try {
+                                        System.out.println("    Trying XPath fallback");
                                         By xpathBy = By.xpath("//*[@id='" + id + "']//input | //input[@id='" + id + "']");
                                         inputElement = wait.until(ExpectedConditions.visibilityOfElementLocated(xpathBy));
+                                        System.out.println("    ✓ Found element with XPath fallback");
                                     } catch (Exception e4) {
+                                        System.out.println("    ✗ XPath fallback failed: " + e4.getMessage());
                                         // Essai 5: Utiliser JavaScript pour les composants PrimeNG avec shadow DOM
                                         try {
+                                            System.out.println("    Trying JavaScript fallback");
                                             JavascriptExecutor js = (JavascriptExecutor) driver;
                                             inputElement = (WebElement) js.executeScript(
                                                 "return document.getElementById('" + id + "')?.querySelector('input') || " +
@@ -165,7 +179,9 @@ public class StepExecutor {
                                             if (inputElement == null) {
                                                 throw new Exception("Element not found via JavaScript");
                                             }
+                                            System.out.println("    ✓ Found element with JavaScript");
                                         } catch (Exception e5) {
+                                            System.out.println("    ✗ JavaScript fallback failed: " + e5.getMessage());
                                             throw lastException; // Lancer l'exception originale
                                         }
                                     }
