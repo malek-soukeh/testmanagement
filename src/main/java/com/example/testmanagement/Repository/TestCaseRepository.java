@@ -28,4 +28,9 @@ public interface TestCaseRepository extends JpaRepository<TestCase,Long> {
             "left join fetch tc.createdBy"
     )
     List<TestCase> findAllWithSuiteAndProject();
+
+    @Query("select tc from TestCase tc " +
+            "left join fetch tc.testCaseSteps " +
+            "where tc.id = :id")
+    Optional<TestCase> findByIdWithSteps(Long id);
 }

@@ -5,8 +5,8 @@ import com.example.testmanagement.Repository.TestCaseRepository;
 import com.example.testmanagement.Requests.CreateTestCaseRequest;
 import com.example.testmanagement.Requests.UpdateTestCaseRequest;
 import com.example.testmanagement.Responses.TestCaseResponse;
-import com.example.testmanagement.Services.JenkinsService;
 import com.example.testmanagement.Services.TestCaseService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,20 +22,12 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/test-case/{testsuiteId}")
+@RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ROLE_ADMIN','ROLE_TESTER')")
 public class TestCaseController {
 
     private final TestCaseService testCaseService;
-    private final JenkinsService jenkinsService;
     private final TestCaseRepository testCaseRepository;
-
-    public TestCaseController(TestCaseService testCaseService, 
-                               @Lazy JenkinsService jenkinsService,
-                               TestCaseRepository testCaseRepository) {
-        this.testCaseService = testCaseService;
-        this.jenkinsService = jenkinsService;
-        this.testCaseRepository = testCaseRepository;
-    }
 
     @PostMapping
     public ResponseEntity<TestCaseResponse> createTestCase(
@@ -117,16 +109,6 @@ public class TestCaseController {
         Map<String, Long> statistics = testCaseService.getTestCaseStatistics();
         return ResponseEntity.ok(statistics);
     }
-
-    private Long getUserIdFromUsername(String firstName) {
-        return testCaseService.getUserIdByUsername(firstName);
-    }
-    @PostMapping("/{id}/trigger")
-    public ResponseEntity<String> triggerTestCaseExecution(@PathVariable Long id,@PathVariable Long testsuiteId) {
-        testCaseService.triggerAutomatedTest(id);
-        return ResponseEntity.ok("Test case " + id + " started successfully");
-    }
-
     @GetMapping("/count-by-type")
     public Map<String, Long> getTestCaseCountByType() {
         long manual = testCaseRepository.countByTestType(TestCase.TestType.MANUAL);
@@ -137,16 +119,9 @@ public class TestCaseController {
         response.put("manual", manual);
         response.put("automated", automated);
         response.put("performance", performance);
-
         return response;
     }
 
-    @GetMapping("/{id}/last-build-result")
-    public ResponseEntity<JenkinsService.TestResultSummary> getLastBuildResult(@PathVariable Long id) {
-        JenkinsService.TestResultSummary summary = jenkinsService.getLastBuildTestResult();
-        if (summary == null) return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        return ResponseEntity.ok(summary);
-    }
 
 
 }

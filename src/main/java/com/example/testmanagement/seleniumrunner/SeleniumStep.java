@@ -10,8 +10,10 @@ import lombok.NoArgsConstructor;
     public class SeleniumStep {
         private String stepName;
         private String actionType;
+    private String selectorType;
         private String actionTarget;
         private String actionValue;
         private String expectedResult;
+
     }
 

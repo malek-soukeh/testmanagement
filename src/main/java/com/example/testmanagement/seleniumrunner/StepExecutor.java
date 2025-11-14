@@ -10,59 +10,70 @@ import java.time.Duration;
 public class StepExecutor {
 
     private static final int TIMEOUT_SECONDS = 10;
+    private static By by(String selectorType, String target) {
+        if (target == null) return null;
+        if ("xpath".equalsIgnoreCase(selectorType)) return By.xpath(target);
+        return By.cssSelector(target);
+    }
 
     public static boolean executeStep(WebDriver driver, SeleniumStep step) {
         try {
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(TIMEOUT_SECONDS));
-
-            switch (step.getActionType().toLowerCase()) {
-
+            String action = (step.getActionType() == null) ? "" : step.getActionType().toLowerCase();
+            String selectorType = (step.getSelectorType() == null) ? "css" : step.getSelectorType().toLowerCase();
+            String target = step.getActionTarget();
+            String value = step.getActionValue();
+            By by = by(selectorType, target);
+            switch (action) {
+                case "open":
                 case "navigate":
-                    driver.get(step.getActionValue());
+                    if (value != null && !value.isBlank()) driver.get(value);
+                    else if (step.getActionTarget() != null) driver.get(step.getActionTarget());
                     break;
 
                 case "click":
-                    WebElement clickElement = wait.until(ExpectedConditions.elementToBeClickable(By.xpath(step.getActionTarget())));
+                    WebElement clickElement = wait.until(ExpectedConditions.elementToBeClickable(by));
                     clickElement.click();
                     break;
 
                 case "sendkeys":
-                    WebElement inputElement = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(step.getActionTarget())));
+                    WebElement inputElement = wait.until(ExpectedConditions.visibilityOfElementLocated(by));
                     inputElement.clear();
-                    inputElement.sendKeys(step.getActionValue());
+                    inputElement.sendKeys(value == null ? "" : value);
                     break;
 
                 case "selectbyvalue":
-                    WebElement selectElement = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(step.getActionTarget())));
+                    WebElement selectElement = wait.until(ExpectedConditions.visibilityOfElementLocated(by));
                     new Select(selectElement).selectByValue(step.getActionValue());
                     break;
 
                 case "selectbyvisibletext":
-                    WebElement selectTextElement = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(step.getActionTarget())));
-                    new Select(selectTextElement).selectByVisibleText(step.getActionValue());
+                    WebElement selectTextElement = wait.until(ExpectedConditions.visibilityOfElementLocated(by));
+                    new Select(selectTextElement).selectByVisibleText(value);
                     break;
 
                 case "hover":
-                    WebElement hoverElement = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(step.getActionTarget())));
+                    WebElement hoverElement = wait.until(ExpectedConditions.visibilityOfElementLocated(by));
                     new org.openqa.selenium.interactions.Actions(driver).moveToElement(hoverElement).perform();
                     break;
 
                 case "scroll":
-                    WebElement scrollElement = driver.findElement(By.xpath(step.getActionTarget()));
-                    ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", scrollElement);
+                    WebElement scrollEl = wait.until(ExpectedConditions.visibilityOfElementLocated(by));
+                    ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", scrollEl);
                     break;
 
                 case "asserttext":
-                    WebElement textElement = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(step.getActionTarget())));
+                    WebElement textElement = wait.until(ExpectedConditions.visibilityOfElementLocated(by));
                     String actualText = textElement.getText();
-                    if (!actualText.equals(step.getExpectedResult())) {
-                        System.out.println("Assertion failed for text. Expected: " + step.getExpectedResult() + ", Actual: " + actualText);
+                    if (value == null) return false;
+                    if (!actualText.contains(value)) {
+                        System.out.println("Assertion failed for text. Expected: " + value + ", Actual: " + actualText);
                         return false;
                     }
                     break;
 
                 case "assertdisplayed":
-                    WebElement displayedElement = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(step.getActionTarget())));
+                    WebElement displayedElement = wait.until(ExpectedConditions.visibilityOfElementLocated(by));
                     if (!displayedElement.isDisplayed()) {
                         System.out.println("Element not displayed: " + step.getActionTarget());
                         return false;
@@ -87,6 +98,13 @@ public class StepExecutor {
 
                 case "wait":
                     Thread.sleep(Long.parseLong(step.getActionValue())); // valeur en ms
+                    break;
+                case "title":
+                    String title = driver.getTitle();
+                    if (value == null || !title.contains(value)) {
+                        System.out.printf("Title assertion failed: expected contains '%s' but was '%s'%n", value, title);
+                        return false;
+                    }
                     break;
 
                 default:

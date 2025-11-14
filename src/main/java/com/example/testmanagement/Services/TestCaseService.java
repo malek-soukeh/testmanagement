@@ -34,11 +34,8 @@ public class TestCaseService {
     private final TestCaseRepository testCaseRepository;
     private final UserRepository userRepository;
     private final TestCaseStepRepository testCaseStepRepository;
-    private JenkinsService jenkinsService;
     @Autowired
-    public void setJenkinsService(@Lazy JenkinsService jenkinsService) {
-        this.jenkinsService = jenkinsService;
-    }
+    private final SeleniumExecutionService seleniumExecutionService;
     public TestCase createTestCase(CreateTestCaseRequest request, String username,Long testSuiteId) {
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new RuntimeException("User not found: " + username));
@@ -54,6 +51,8 @@ public class TestCaseService {
         testCase.setStatus(request.getStatus() != null ? request.getStatus() : TestCase.Status.DRAFT);
         testCase.setCreatedBy(user);
         testCase.setTestSuite(testSuite);
+        testCase.setCreatedAt(LocalDateTime.now());
+
         
         TestCase savedTestCase = testCaseRepository.save(testCase);
         
@@ -158,32 +157,39 @@ public class TestCaseService {
                 "failedTestCases", testCaseRepository.countByStatus(TestCase.Status.FAILED)
                 );
     }
-    public void triggerAutomatedTest(Long id) {
-        TestCase testCase = testCaseRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Test case not found"));
-
-        if (testCase.getTestType() != TestCase.TestType.AUTOMATED &&
-                testCase.getTestType() != TestCase.TestType.PERFORMANCE) {
-            throw new RuntimeException("Only automated or performance tests can be triggered");
-        }
-        String scenarioJson = buildSeleniumScenarioJson(testCase);
-        jenkinsService.triggerJenkinsJob(id);
-        testCase.setStatus(TestCase.Status.RUNNING);
-        testCaseRepository.save(testCase);
-    }
-
-
     public Long getUserIdByUsername(String firstName ) {
         return userRepository.findByFirstName(firstName)
                 .map(User::getId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + firstName));
     }
+    public Map<String, Object> triggerAutomatedTest(Long testCaseId, Long userId,
+                                     String jenkinsJobUrl, String jenkinsUser,
+                                     String jenkinsToken) {
+        TestCase testCase = getTestCaseById(testCaseId);
+        if (testCase.getTestType() != TestCase.TestType.AUTOMATED &&
+                testCase.getTestType() != TestCase.TestType.PERFORMANCE) {
+            throw new RuntimeException("Only automated or performance tests can be triggered");
+        }
+
+        // Sérialiser le scénario en JSON
+        String scenarioJson = buildSeleniumScenarioJson(testCase);
+
+        // Appel du service Selenium / Jenkins
+        Map<String, Object> response = seleniumExecutionService.triggerTestCaseViaJenkins(
+                testCaseId, userId, jenkinsJobUrl, jenkinsUser, jenkinsToken, scenarioJson
+        );
+
+        testCase.setStatus(TestCase.Status.RUNNING);
+        testCaseRepository.save(testCase);
+        return response;
+    }
+
 
     public String buildSeleniumScenarioJson(TestCase testCase) {
         Map<String, Object> scenario = new HashMap<>();
         scenario.put("testCaseId", testCase.getId());
         scenario.put("title", testCase.getTitle());
-        scenario.put("url", testCase.getPrecondition()); // ou testUrl selon ton modèle
+        scenario.put("url", testCase.getTestUrl());
 
         List<Map<String, Object>> steps = testCase.getTestCaseSteps().stream().map(step -> {
             Map<String, Object> map = new HashMap<>();
@@ -193,9 +199,7 @@ public class TestCaseService {
             map.put("actionValue", step.getActionValue());
             map.put("expectedResult", step.getExpectedResult());
             return map;
-        }).toList();
-
-
+        }).collect(Collectors.toList());
         scenario.put("steps", steps);
         try {
             return new ObjectMapper().writeValueAsString(scenario);
@@ -204,20 +208,7 @@ public class TestCaseService {
         }
     }
 
-    public SeleniumScenario buildSeleniumScenario(TestCase testCase) {
-        SeleniumScenario scenario = new SeleniumScenario();
-        scenario.setUrl(testCase.getTestUrl());
-        scenario.setSteps(testCase.getTestCaseSteps().stream()
-                .map(step -> new SeleniumStep(
-                        step.getStepName(),
-                        step.getActionType(),
-                        step.getActionTarget(),
-                        step.getActionValue(),
-                        step.getExpectedResult()
-                ))
-                .toList());
-        return scenario;
-    }
+
 
 
 

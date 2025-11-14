@@ -2,9 +2,9 @@ package com.example.testmanagement.Services;
 
 import com.example.testmanagement.Entities.*;
 import com.example.testmanagement.Repository.*;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -24,16 +24,19 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class SeleniumExecutionService {
 
+    @Autowired
     private final TestCaseRepository testCaseRepo;
-    private final TestCaseStepRepository stepRepo;
+    @Autowired
     private final TestRunRepository testRunRepo;
+    @Autowired
     private final TestResultRepository testResultRepo;
+    @Autowired
     private final UserRepository userRepo;
 
 
     public Map<String, Object> triggerTestCaseViaJenkins(Long testCaseId, Long userId,
                                                          String jenkinsJobUrl, String jenkinsUser,
-                                                         String jenkinsToken) {
+                                                         String jenkinsToken, String scenarioJson) {
 
         TestCase testCase = testCaseRepo.findById(testCaseId)
                 .orElseThrow(() -> new RuntimeException("TestCase not found"));
@@ -65,52 +68,16 @@ public class SeleniumExecutionService {
         run.getTestResults().add(result);
         testRunRepo.save(run);
 
-        // Sérialiser le scénario pour Jenkins (JSON)
-        String scenarioJson = buildScenarioJson(testCase);
-
         // Déclencher le job Jenkins
         String jenkinsResponse = triggerJenkinsJob(jenkinsJobUrl, scenarioJson, jenkinsUser, jenkinsToken);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("runId", run.getId());
-        response.put("testResultId", result.getId());
-        response.put("status", run.getStatus());
-        response.put("jenkinsResponse", jenkinsResponse);
-
-        return response;
+        return Map.of(
+                "runId", run.getId(),
+                "testResultId", result.getId(),
+                "status", run.getStatus(),
+                "jenkinsResponse", jenkinsResponse
+        );
     }
-
-    /**
-     * Sérialise le test case en JSON pour Jenkins
-     */
-    private String buildScenarioJson(TestCase testCase) {
-        // Créer une structure JSON simple, par ex. titre, steps, type
-        Map<String, Object> scenario = new HashMap<>();
-        scenario.put("testCaseId", testCase.getId());
-        scenario.put("title", testCase.getTitle());
-        scenario.put("testType", testCase.getTestType().name());
-
-        List<Map<String, Object>> stepsJson = new ArrayList<>();
-        for (TestCaseStep step : testCase.getTestCaseSteps()) {
-            Map<String, Object> stepMap = new HashMap<>();
-            stepMap.put("stepName", step.getStepName());
-            stepMap.put("actionType", step.getActionType());
-            stepMap.put("actionTarget", step.getActionTarget());
-            stepMap.put("actionValue", step.getActionValue());
-            stepsJson.add(stepMap);
-        }
-        scenario.put("steps", stepsJson);
-
-        try {
-            return new ObjectMapper().writeValueAsString(scenario);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Error serializing test case to JSON", e);
-        }
-    }
-
-    /**
-     * Déclenche un job Jenkins via HTTP POST
-     */
     public String triggerJenkinsJob(String jenkinsJobUrl, String scenarioJson,
                                     String jenkinsUser, String jenkinsToken) {
         RestTemplate rest = new RestTemplate();
@@ -130,10 +97,6 @@ public class SeleniumExecutionService {
 
         return resp.getBody();
     }
-
-    /**
-     * Méthode utilitaire pour récupérer le dernier résultat d'un TestRun
-     */
     public TestResult getTestResult(Long testResultId) {
         return testResultRepo.findById(testResultId)
                 .orElseThrow(() -> new RuntimeException("TestResult not found"));
