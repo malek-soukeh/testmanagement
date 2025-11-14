@@ -59,30 +59,67 @@ public class StepExecutor {
                 case "click":
                     // Pour les composants PrimeNG comme p-button, essayer d'abord le sélecteur direct
                     // puis chercher le bouton à l'intérieur si nécessaire
-                    WebElement clickElement;
+                    WebElement clickElement = null;
+                    Exception lastClickException = null;
+                    
+                    // Essai 1: Sélecteur direct
                     try {
                         clickElement = wait.until(ExpectedConditions.elementToBeClickable(by));
                     } catch (Exception e) {
-                        // Si l'élément n'est pas trouvé, essayer de trouver un bouton à l'intérieur
-                        // (pour les composants PrimeNG comme p-button)
+                        lastClickException = e;
+                        // Essai 2: Si c'est un XPath avec "button", essayer de trouver dans p-button
                         if (selectorType.equals("xpath") && target.contains("button")) {
-                            // Essayer de trouver le bouton dans un p-button
-                            By fallbackBy = By.xpath("//p-button//button | //p-button/button");
                             try {
+                                // Essayer de trouver le bouton dans un p-button
+                                By fallbackBy = By.xpath("//p-button//button | //p-button/button");
                                 clickElement = wait.until(ExpectedConditions.elementToBeClickable(fallbackBy));
                             } catch (Exception e2) {
-                                // Essayer par texte
-                                if (target.contains("Sign In") || target.contains("sign in")) {
-                                    By textBy = By.xpath("//button[contains(text(), 'Sign In') or contains(text(), 'sign in')]");
-                                    clickElement = wait.until(ExpectedConditions.elementToBeClickable(textBy));
-                                } else {
-                                    throw e;
+                                // Essai 3: Essayer par texte (le texte peut être dans un span)
+                                try {
+                                    if (target.contains("Sign In") || target.contains("sign in")) {
+                                        By textBy = By.xpath(
+                                            "//button[contains(text(), 'Sign In') or contains(text(), 'sign in')] | " +
+                                            "//button//span[contains(text(), 'Sign In') or contains(text(), 'sign in')]/.. | " +
+                                            "//p-button//button[contains(., 'Sign In')] | " +
+                                            "//p-button//span[contains(text(), 'Sign In')]/ancestor::button"
+                                        );
+                                        clickElement = wait.until(ExpectedConditions.elementToBeClickable(textBy));
+                                    } else {
+                                        // Essayer de trouver n'importe quel bouton dans p-button
+                                        By anyButtonBy = By.xpath("//p-button//button");
+                                        clickElement = wait.until(ExpectedConditions.elementToBeClickable(anyButtonBy));
+                                    }
+                                } catch (Exception e3) {
+                                    // Essai 4: Utiliser JavaScript
+                                    try {
+                                        JavascriptExecutor js = (JavascriptExecutor) driver;
+                                        if (target.contains("Sign In") || target.contains("sign in")) {
+                                            clickElement = (WebElement) js.executeScript(
+                                                "return Array.from(document.querySelectorAll('button, p-button button')).find(btn => " +
+                                                "btn.textContent.includes('Sign In') || btn.textContent.includes('sign in'));"
+                                            );
+                                        } else {
+                                            clickElement = (WebElement) js.executeScript(
+                                                "return document.querySelector('p-button button') || document.querySelector('button');"
+                                            );
+                                        }
+                                        if (clickElement == null) {
+                                            throw new Exception("Button not found via JavaScript");
+                                        }
+                                    } catch (Exception e4) {
+                                        throw lastClickException;
+                                    }
                                 }
                             }
                         } else {
-                            throw e;
+                            throw lastClickException;
                         }
                     }
+                    
+                    if (clickElement == null) {
+                        throw new RuntimeException("Could not find clickable element with selector: " + target);
+                    }
+                    
                     clickElement.click();
                     break;
 
@@ -91,26 +128,58 @@ public class StepExecutor {
                 case "input":
                     // Pour les composants PrimeNG comme p-password, essayer d'abord le sélecteur direct
                     // puis chercher l'input à l'intérieur si nécessaire
-                    WebElement inputElement;
+                    WebElement inputElement = null;
+                    Exception lastException = null;
+                    
+                    // Essai 1: Sélecteur direct
                     try {
                         inputElement = wait.until(ExpectedConditions.visibilityOfElementLocated(by));
                     } catch (Exception e) {
-                        // Si l'élément n'est pas trouvé, essayer de trouver un input à l'intérieur
-                        // (pour les composants PrimeNG comme p-password)
+                        lastException = e;
+                        // Essai 2: Si c'est un ID CSS, essayer directement par ID
                         if (selectorType.equals("css") && target.startsWith("#")) {
                             String id = target.substring(1);
-                            By fallbackBy = By.cssSelector("#" + id + " input, #" + id + " input[type='password'], #" + id + " input[type='text']");
                             try {
-                                inputElement = wait.until(ExpectedConditions.visibilityOfElementLocated(fallbackBy));
+                                // Essayer directement l'ID (pour les inputs directs)
+                                By idBy = By.id(id);
+                                inputElement = wait.until(ExpectedConditions.visibilityOfElementLocated(idBy));
                             } catch (Exception e2) {
-                                // Essayer avec XPath
-                                By xpathBy = By.xpath("//*[@id='" + id + "']//input");
-                                inputElement = wait.until(ExpectedConditions.visibilityOfElementLocated(xpathBy));
+                                // Essai 3: Chercher un input à l'intérieur (pour les composants PrimeNG)
+                                try {
+                                    By fallbackBy = By.cssSelector("#" + id + " input, #" + id + " input[type='password'], #" + id + " input[type='text']");
+                                    inputElement = wait.until(ExpectedConditions.visibilityOfElementLocated(fallbackBy));
+                                } catch (Exception e3) {
+                                    // Essai 4: XPath pour trouver l'input
+                                    try {
+                                        By xpathBy = By.xpath("//*[@id='" + id + "']//input | //input[@id='" + id + "']");
+                                        inputElement = wait.until(ExpectedConditions.visibilityOfElementLocated(xpathBy));
+                                    } catch (Exception e4) {
+                                        // Essai 5: Utiliser JavaScript pour les composants PrimeNG avec shadow DOM
+                                        try {
+                                            JavascriptExecutor js = (JavascriptExecutor) driver;
+                                            inputElement = (WebElement) js.executeScript(
+                                                "return document.getElementById('" + id + "')?.querySelector('input') || " +
+                                                "document.querySelector('#" + id + " input') || " +
+                                                "document.getElementById('" + id + "');"
+                                            );
+                                            if (inputElement == null) {
+                                                throw new Exception("Element not found via JavaScript");
+                                            }
+                                        } catch (Exception e5) {
+                                            throw lastException; // Lancer l'exception originale
+                                        }
+                                    }
+                                }
                             }
                         } else {
-                            throw e;
+                            throw lastException;
                         }
                     }
+                    
+                    if (inputElement == null) {
+                        throw new RuntimeException("Could not find input element with selector: " + target);
+                    }
+                    
                     inputElement.clear();
                     inputElement.sendKeys(value == null ? "" : value);
                     break;
@@ -197,3 +266,5 @@ public class StepExecutor {
         }
     }
 }
+
+
