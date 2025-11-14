@@ -38,8 +38,18 @@ pipeline {
                     echo 'Running Selenium Runner...'
                     echo "Scenario JSON length: ${params.SCENARIO_JSON.length()}"
                     
-                    // Sauvegarder le JSON dans un fichier temporaire pour éviter les problèmes d'échappement
-                    writeFile file: '/tmp/scenario.json', text: params.SCENARIO_JSON
+                    // Décoder le JSON encodé en URL
+                    String decodedJson = java.net.URLDecoder.decode(params.SCENARIO_JSON, "UTF-8")
+                    
+                    // Sauvegarder le JSON décodé dans un fichier temporaire
+                    writeFile file: '/tmp/scenario.json', text: decodedJson
+                    
+                    // Vérifier que le fichier a été créé correctement
+                    sh """
+                        echo "First 100 chars of JSON file:"
+                        head -c 100 /tmp/scenario.json || true
+                        echo ""
+                    """
                     
                     // Exécuter TestExecutor avec le fichier JSON
                     sh """
