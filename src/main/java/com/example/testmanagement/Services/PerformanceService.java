@@ -106,17 +106,33 @@ public class PerformanceService {
             throw new RuntimeException("Failed to serialize scenario JSON", e);
         }
 
-        // call jenkins - use form data
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-        headers.setBasicAuth(jenkinsUser, jenkinsToken);
+        // Essayer d'abord avec CSRF token, puis sans si ça échoue
+        ResponseEntity<String> resp;
+        try {
+            // Récupérer le CSRF token (Jenkins Crumb)
+            String jenkinsCrumb = getJenkinsCrumb(jenkinsJobUrl, jenkinsUser, jenkinsToken);
 
-        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("SCENARIO_JSON", scenarioJson);
-        body.add("TEST_RESULT_ID", result.getId().toString());
+            // call jenkins - use form data
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            headers.setBasicAuth(jenkinsUser, jenkinsToken);
+            
+            // Ajouter le CSRF token si disponible
+            if (jenkinsCrumb != null && !jenkinsCrumb.isEmpty()) {
+                headers.add("Jenkins-Crumb", jenkinsCrumb);
+            }
 
-        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
-        ResponseEntity<String> resp = restTemplate.postForEntity(jenkinsJobUrl, request, String.class);
+            MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+            body.add("SCENARIO_JSON", scenarioJson);
+            body.add("TEST_RESULT_ID", result.getId().toString());
+
+            HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
+            resp = restTemplate.postForEntity(jenkinsJobUrl, request, String.class);
+        } catch (Exception e) {
+            // Si l'appel avec form data échoue, essayer avec les paramètres dans l'URL
+            System.err.println("Form data approach failed, trying URL parameters: " + e.getMessage());
+            resp = triggerJenkinsWithUrlParams(jenkinsJobUrl, scenarioJson, result.getId().toString(), jenkinsUser, jenkinsToken);
+        }
 
         if (!resp.getStatusCode().is2xxSuccessful() && resp.getStatusCode() != HttpStatus.CREATED) {
             // mark result failed
@@ -221,6 +237,63 @@ public class PerformanceService {
         
         scenario.put("performance", perfConfig);
         return scenario;
+    }
+
+    /**
+     * Récupère le CSRF token (Jenkins Crumb) pour les requêtes POST
+     */
+    private String getJenkinsCrumb(String jenkinsJobUrl, String jenkinsUser, String jenkinsToken) {
+        try {
+            // Extraire l'URL de base de Jenkins depuis jenkinsJobUrl
+            // Ex: http://10.0.0.15:8080/job/JmeterTest/buildWithParameters -> http://10.0.0.15:8080
+            String baseUrl = jenkinsJobUrl.substring(0, jenkinsJobUrl.indexOf("/job/"));
+            String crumbUrl = baseUrl + "/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,\":\",//crumb)";
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBasicAuth(jenkinsUser, jenkinsToken);
+            HttpEntity<String> request = new HttpEntity<>(headers);
+            
+            ResponseEntity<String> response = restTemplate.exchange(crumbUrl, HttpMethod.GET, request, String.class);
+            
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                // Format: "Jenkins-Crumb:abc123def456"
+                String crumb = response.getBody().trim();
+                if (crumb.contains(":")) {
+                    return crumb.split(":")[1];
+                }
+                return crumb;
+            }
+        } catch (Exception e) {
+            // Si la récupération du crumb échoue, on continue sans (certains Jenkins n'en ont pas besoin)
+            System.err.println("Warning: Could not retrieve Jenkins Crumb: " + e.getMessage());
+        }
+        return null;
+    }
+    
+    /**
+     * Méthode alternative : déclencher Jenkins avec les paramètres dans l'URL
+     */
+    private ResponseEntity<String> triggerJenkinsWithUrlParams(String jenkinsJobUrl, String scenarioJson, 
+                                                                String testResultId, String jenkinsUser, 
+                                                                String jenkinsToken) {
+        try {
+            // Encoder le JSON pour l'URL
+            String encodedJson = java.net.URLEncoder.encode(scenarioJson, java.nio.charset.StandardCharsets.UTF_8);
+            String encodedTestResultId = java.net.URLEncoder.encode(testResultId, java.nio.charset.StandardCharsets.UTF_8);
+            
+            // Construire l'URL avec les paramètres
+            String urlWithParams = jenkinsJobUrl + 
+                "?SCENARIO_JSON=" + encodedJson + 
+                "&TEST_RESULT_ID=" + encodedTestResultId;
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBasicAuth(jenkinsUser, jenkinsToken);
+            HttpEntity<String> request = new HttpEntity<>(headers);
+            
+            return restTemplate.postForEntity(urlWithParams, request, String.class);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to trigger Jenkins job with URL parameters", e);
+        }
     }
 
     private Double toDouble(Object o) {

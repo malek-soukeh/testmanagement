@@ -55,6 +55,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/test-case/*/trigger").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/test-results/lasttestresult").permitAll()
                         .requestMatchers("/api/performance-tests/**").permitAll()
+                        .requestMatchers("/api/performance/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
