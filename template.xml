@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.5">
+    <hashTree>
+        <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Template Performance TestPlan" enabled="true">
+            <stringProp name="TestPlan.comments">Template paramétrable - pass props via -J</stringProp>
+            <boolProp name="TestPlan.functional_mode">false</boolProp>
+            <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
+            <elementProp name="TestPlan.user_defined_variables" elementType="Arguments">
+                <collectionProp name="Arguments.arguments">
+                    <!-- fallback defaults -->
+                    <elementProp name="USERS" elementType="Argument"><stringProp name="Argument.name">USERS</stringProp><stringProp name="Argument.value">${__P(USERS,10)}</stringProp></elementProp>
+                    <elementProp name="RAMP_UP" elementType="Argument"><stringProp name="Argument.name">RAMP_UP</stringProp><stringProp name="Argument.value">${__P(RAMP_UP,10)}</stringProp></elementProp>
+                    <elementProp name="DURATION" elementType="Argument"><stringProp name="Argument.name">DURATION</stringProp><stringProp name="Argument.value">${__P(DURATION,60)}</stringProp></elementProp>
+                    <elementProp name="PROTOCOL" elementType="Argument"><stringProp name="Argument.name">PROTOCOL</stringProp><stringProp name="Argument.value">${__P(PROTOCOL,http)}</stringProp></elementProp>
+                    <elementProp name="DOMAIN" elementType="Argument"><stringProp name="Argument.name">DOMAIN</stringProp><stringProp name="Argument.value">${__P(DOMAIN,localhost)}</stringProp></elementProp>
+                    <elementProp name="PORT" elementType="Argument"><stringProp name="Argument.name">PORT</stringProp><stringProp name="Argument.value">${__P(PORT,)}</stringProp></elementProp>
+                    <elementProp name="PATH" elementType="Argument"><stringProp name="Argument.name">PATH</stringProp><stringProp name="Argument.value">${__P(PATH,/)}</stringProp></elementProp>
+                    <elementProp name="METHOD" elementType="Argument"><stringProp name="Argument.name">METHOD</stringProp><stringProp name="Argument.value">${__P(METHOD,GET)}</stringProp></elementProp>
+                    <elementProp name="RESULT_FILE" elementType="Argument"><stringProp name="Argument.name">RESULT_FILE</stringProp><stringProp name="Argument.value">${__P(RESULT_FILE,results/result.jtl)}</stringProp></elementProp>
+                    <elementProp name="TIMEOUT" elementType="Argument"><stringProp name="Argument.name">TIMEOUT</stringProp><stringProp name="Argument.value">${__P(TIMEOUT,5000)}</stringProp></elementProp>
+                    <elementProp name="REQUESTS_PER_SECOND" elementType="Argument"><stringProp name="Argument.name">REQUESTS_PER_SECOND</stringProp><stringProp name="Argument.value">${__P(REQUESTS_PER_SECOND,)}</stringProp></elementProp>
+                </collectionProp>
+            </elementProp>
+            <stringProp name="TestPlan.user_define_classpath"/>
+        </TestPlan>
+        <hashTree>
+
+            <!-- HTTP Request Defaults -->
+            <ConfigTestElement guiclass="HttpDefaultsGui" testclass="ConfigTestElement" testname="HTTP Request Defaults" enabled="true">
+                <stringProp name="HTTPSampler.domain">${DOMAIN}</stringProp>
+                <stringProp name="HTTPSampler.port">${PORT}</stringProp>
+                <stringProp name="HTTPSampler.protocol">${PROTOCOL}</stringProp>
+                <stringProp name="HTTPSampler.contentEncoding"/>
+                <stringProp name="HTTPSampler.path"/>
+            </ConfigTestElement>
+            <hashTree/>
+
+            <!-- Header manager -->
+            <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager" enabled="true">
+                <collectionProp name="HeaderManager.headers">
+                    <elementProp name="Authorization" elementType="Header">
+                        <stringProp name="Header.name">Authorization</stringProp>
+                        <stringProp name="Header.value">${__P(AUTHORIZATION,)}</stringProp>
+                    </elementProp>
+                    <elementProp name="Content-Type" elementType="Header">
+                        <stringProp name="Header.name">Content-Type</stringProp>
+                        <stringProp name="Header.value">${__P(CONTENT_TYPE,application/json)}</stringProp>
+                    </elementProp>
+                </collectionProp>
+            </HeaderManager>
+            <hashTree/>
+
+            <!-- Thread Group -->
+            <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Dynamic Thread Group" enabled="true">
+                <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+                <elementProp name="ThreadGroup.main_controller" elementType="LoopController">
+                    <boolProp name="LoopController.continue_forever">false</boolProp>
+                    <intProp name="LoopController.loops">-1</intProp>
+                </elementProp>
+                <stringProp name="ThreadGroup.num_threads">${USERS}</stringProp>
+                <stringProp name="ThreadGroup.ramp_time">${RAMP_UP}</stringProp>
+                <boolProp name="ThreadGroup.scheduler">${__P(USE_DURATION,false)}</boolProp>
+                <stringProp name="ThreadGroup.duration">${DURATION}</stringProp>
+            </ThreadGroup>
+            <hashTree>
+
+                <!-- Constant Throughput Timer (si REQUESTS_PER_SECOND est défini) -->
+                <ConstantThroughputTimer guiclass="TestBeanGUI" testclass="ConstantThroughputTimer" testname="Constant Throughput Timer" enabled="true">
+                    <stringProp name="calcMode">0</stringProp>
+                    <doubleProp name="throughput">${__P(REQUESTS_PER_SECOND,0)}</doubleProp>
+                </ConstantThroughputTimer>
+                <hashTree/>
+
+                <!-- HTTP Sampler -->
+                <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="HTTP Request - Target" enabled="true">
+                    <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+                        <collectionProp name="Arguments.arguments"/>
+                    </elementProp>
+                    <stringProp name="HTTPSampler.path">${PATH}</stringProp>
+                    <stringProp name="HTTPSampler.method">${METHOD}</stringProp>
+                    <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+                    <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+                    <stringProp name="HTTPSampler.connect_timeout">${TIMEOUT}</stringProp>
+                    <stringProp name="HTTPSampler.response_timeout">${TIMEOUT}</stringProp>
+                </HTTPSamplerProxy>
+                <hashTree/>
+
+                <!-- Response Assertion (optionnel, param via ASSERT_CONTAINS) -->
+                <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Response contains assertion" enabled="true">
+                    <collectionProp name="Asserion.test_strings">
+                        <stringProp name="0">${__P(ASSERT_CONTAINS,)}</stringProp>
+                    </collectionProp>
+                    <stringProp name="Assertion.test_field">Text</stringProp>
+                    <boolProp name="Assertion.assume_success">false</boolProp>
+                    <intProp name="Assertion.test_type">16</intProp>
+                </ResponseAssertion>
+                <hashTree/>
+
+                <!-- Collect results to file (JTL) -->
+                <ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="JTL Results" enabled="true">
+                    <boolProp name="ResultCollector.error_logging">false</boolProp>
+                    <stringProp name="filename">${RESULT_FILE}</stringProp>
+                </ResultCollector>
+                <hashTree/>
+
+            </hashTree>
+
+        </hashTree>
+    </hashTree>
+</jmeterTestPlan>

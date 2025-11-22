@@ -5,7 +5,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
-import java.util.*;
 
 @Entity
 @Getter
@@ -40,6 +39,14 @@ public class TestResult {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "executed_by")
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "password", "role"})
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "password", "roles"})
     private User executedBy;
+
+    private Double avgResponseTimeMs;
+    private Double maxResponseTimeMs;
+    private Double p95ResponseTimeMs;
+    private Double errorRatePercent;
+    private String jmeterReportUrl;
+
+
 }

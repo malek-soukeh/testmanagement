@@ -35,7 +35,7 @@ public class SeleniumExecutionService {
         // Créer un TestRun dans la DB
         TestRun run = new TestRun();
         run.setRunName("Jenkins Run - " + testCase.getTitle() + " - " + LocalDateTime.now());
-        run.setTestSuite(testCase.getTestSuite());
+        run.getTestCase().setTestSuite(testCase.getTestSuite());
         run.setStatus(TestRun.RunStatus.RUNNING);
         run.setCreatedBy(user);
         run.setCreatedAt(LocalDateTime.now());

@@ -59,10 +59,18 @@ public class TestCase {
     @JsonIgnoreProperties({"testCaseSteps"})
     private List<TestCaseStep> testCaseSteps;
 
-    private LocalDateTime createdAt;
+    private LocalDateTime createdAt = LocalDateTime.now();
     private LocalDateTime updatedAt;
     private String testUrl ;
 
     @OneToMany(mappedBy = "testCase", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TestResult> testResults = new ArrayList<>();
+
+   // private String testTypePerf ;
+    // private String nbUsers ;
+
+    @Column(columnDefinition = "TEXT")
+    private String performanceConfig; // JSON string
+
+
 }

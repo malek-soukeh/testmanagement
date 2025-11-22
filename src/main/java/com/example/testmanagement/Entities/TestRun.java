@@ -21,16 +21,20 @@ public class TestRun {
 
     private String runName;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "suite_id")
-    private TestSuite testSuite;
-
     @Enumerated(EnumType.STRING)
     private RunStatus status = RunStatus.PENDING;
 
     private LocalDateTime startedAt;
     private LocalDateTime completedAt;
-    private LocalDateTime createdAt;
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "test_case_id")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "testResults"})
+    private TestCase testCase;
+    
+    private String jenkinsQueueUrl;
+
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")

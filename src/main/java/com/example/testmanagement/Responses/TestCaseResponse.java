@@ -1,9 +1,12 @@
 package com.example.testmanagement.Responses;
 
+import com.example.testmanagement.DTOs.PerformanceConfigDTO;
 import com.example.testmanagement.Entities.Project;
 import com.example.testmanagement.Entities.TestCase;
 import com.example.testmanagement.Entities.TestCaseStep;
 import com.example.testmanagement.Entities.TestSuite;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -26,6 +29,11 @@ public class TestCaseResponse {
     private List<TestCaseStepResponse> steps;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    
+    // Pour les tests de performance
+    private String testUrl;
+    private PerformanceConfigDTO performanceConfig;
+
 
 
     public static TestCaseResponse fromEntity(TestCase testCase) {
@@ -40,6 +48,21 @@ public class TestCaseResponse {
         response.setCreatedBy(testCase.getCreatedBy().getEmail());
         response.setCreatedAt(testCase.getCreatedAt());
         response.setUpdatedAt(testCase.getUpdatedAt());
+        response.setTestUrl(testCase.getTestUrl());
+
+        // Parser performanceConfig depuis JSON si présent
+        if (testCase.getPerformanceConfig() != null && !testCase.getPerformanceConfig().isEmpty()) {
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                PerformanceConfigDTO perfConfig = mapper.readValue(
+                    testCase.getPerformanceConfig(), 
+                    PerformanceConfigDTO.class
+                );
+                response.setPerformanceConfig(perfConfig);
+            } catch (Exception e) {
+                // Si le parsing échoue, on laisse performanceConfig à null
+            }
+        }
 
         if(testCase.getTestSuite() != null) {
             response.setTestSuite(TestSuiteInfo.fromEntity(testCase.getTestSuite()));

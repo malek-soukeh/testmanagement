@@ -18,4 +18,5 @@ public class TestResultDTO {
     private String testName;
     private String testType;
 
+
 }

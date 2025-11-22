@@ -14,7 +14,7 @@ public interface TestResultRepository extends JpaRepository<TestResult,Long> {
     long countByTestRunIdAndStatus(Long runId, TestResult.ResultStatus status);
 
     @Query("SELECT tr FROM TestResult tr " +
-            "JOIN tr.testCase tc " +
+            "JOIN tr.testRun.testCase tc " +
             "JOIN tc.testSuite ts " +
             "JOIN ts.project p " +
             "WHERE p.id = :projectId")

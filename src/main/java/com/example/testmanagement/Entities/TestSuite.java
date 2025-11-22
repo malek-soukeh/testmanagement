@@ -31,7 +31,7 @@ public class TestSuite {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "password", "role"})
     private User createdBy;
 
-    private LocalDateTime createdAt;
+    private LocalDateTime createdAt = LocalDateTime.now();
     private LocalDateTime updatedAt;
 
     @ManyToMany

@@ -39,7 +39,7 @@ public class Project {
     private Long teamSize;
     private LocalDateTime lastActivity;
 
-    private LocalDateTime createdAt;
+    private LocalDateTime createdAt = LocalDateTime.now();
     private LocalDateTime updatedAt;
 
     @Transient

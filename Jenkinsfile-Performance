@@ -1,0 +1,342 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'SCENARIO_JSON', description: 'JSON scenario from backend')
+        string(name: 'TEST_RESULT_ID', description: 'Test result ID for callback')
+    }
+
+    environment {
+        // Configuration Git
+        GIT_REPO = 'https://github.com/malek-soukeh/testmanagement.git'
+        GIT_BRANCH = 'master'
+        
+        // Configuration Backend
+        BACKEND_URL = 'http://192.168.56.1:8081'
+        CALLBACK_TOKEN = 'your-secret-token-here'
+        
+        // Chemins
+        WORKSPACE_DIR = "${WORKSPACE}"
+        RESULTS_DIR = "${WORKSPACE}/results"
+        REPORTS_DIR = "${WORKSPACE}/reports"
+        TEMPLATE_FILE = "${WORKSPACE}/template.xml"
+    }
+
+    stages {
+        stage('Checkout Git Repository') {
+            steps {
+                echo '📥 Clonage du dépôt Git pour récupérer template.xml...'
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "*/${GIT_BRANCH}"]],
+                    userRemoteConfigs: [[url: "${GIT_REPO}"]],
+                    extensions: [[$class: 'PathRestriction', includedRegions: 'template.xml']]
+                ])
+                
+                // Alternative : clone complet puis on garde juste template.xml
+                sh '''
+                    if [ ! -f template.xml ]; then
+                        echo "template.xml non trouvé, clonage complet..."
+                        git clone -b ${GIT_BRANCH} ${GIT_REPO} temp_repo || true
+                        cp temp_repo/template.xml . || true
+                        rm -rf temp_repo || true
+                    fi
+                '''
+                
+                sh '''
+                    echo "Vérification de template.xml..."
+                    if [ -f template.xml ]; then
+                        echo "✅ template.xml trouvé"
+                        ls -lh template.xml
+                    else
+                        echo "❌ ERREUR: template.xml non trouvé!"
+                        exit 1
+                    fi
+                '''
+            }
+        }
+
+        stage('Parse JSON and Extract Parameters') {
+            steps {
+                script {
+                    echo '📋 Parsing du scénario JSON...'
+                    
+                    if (!params.SCENARIO_JSON || params.SCENARIO_JSON.trim().isEmpty()) {
+                        error("❌ SCENARIO_JSON parameter is required")
+                    }
+                    
+                    if (!params.TEST_RESULT_ID || params.TEST_RESULT_ID.trim().isEmpty()) {
+                        error("❌ TEST_RESULT_ID parameter is required")
+                    }
+                    
+                    // Parser le JSON
+                    def json = readJSON text: params.SCENARIO_JSON
+                    def perf = json.performance ?: [:]
+                    
+                    echo "Test Case ID: ${json.testCaseId}"
+                    echo "Title: ${json.title}"
+                    echo "URL: ${json.url}"
+                    
+                    // Parser l'URL
+                    def url = new URL(json.url)
+                    env.PROTOCOL = url.protocol.replace(':', '')  // Enlever le ':'
+                    env.DOMAIN = url.host
+                    env.PORT = url.port != -1 ? url.port.toString() : ""
+                    env.PATH = url.path ?: "/"
+                    
+                    echo "URL Parsed - Protocol: ${env.PROTOCOL}, Domain: ${env.DOMAIN}, Port: ${env.PORT}, Path: ${env.PATH}"
+                    
+                    // Extraire les paramètres de performance
+                    env.USERS = perf.numberOfUsers?.toString() ?: "10"
+                    env.RAMP_UP = perf.rampUpSeconds?.toString() ?: "10"
+                    env.DURATION = perf.durationSeconds?.toString() ?: "60"
+                    env.USE_DURATION = "true"
+                    env.TIMEOUT = perf.timeoutMs?.toString() ?: "5000"
+                    env.REQUESTS_PER_SECOND = perf.requestsPerSecond?.toString() ?: ""
+                    
+                    // Extraire les paramètres supplémentaires
+                    def additionalParams = perf.additionalParams ?: [:]
+                    env.METHOD = additionalParams.method ?: "GET"
+                    env.AUTHORIZATION = additionalParams.authorization ?: ""
+                    env.CONTENT_TYPE = additionalParams.contentType ?: "application/json"
+                    env.ASSERT_CONTAINS = additionalParams.assertContains ?: ""
+                    
+                    // Fichier de résultats
+                    env.RESULT_FILE = "${RESULTS_DIR}/result_${BUILD_NUMBER}.jtl"
+                    env.REPORT_DIR = "${REPORTS_DIR}/report_${BUILD_NUMBER}"
+                    
+                    // Créer les répertoires
+                    sh '''
+                        mkdir -p ${RESULTS_DIR}
+                        mkdir -p ${REPORTS_DIR}
+                    '''
+                    
+                    echo "✅ Paramètres extraits:"
+                    echo "  - Users: ${env.USERS}"
+                    echo "  - Ramp-up: ${env.RAMP_UP}s"
+                    echo "  - Duration: ${env.DURATION}s"
+                    echo "  - Timeout: ${env.TIMEOUT}ms"
+                    echo "  - Method: ${env.METHOD}"
+                }
+            }
+        }
+
+        stage('Run JMeter Test') {
+            steps {
+                script {
+                    echo '🚀 Exécution du test JMeter...'
+                    
+                    sh """
+                        echo "Paramètres JMeter:"
+                        echo "  USERS=${USERS}"
+                        echo "  RAMP_UP=${RAMP_UP}"
+                        echo "  DURATION=${DURATION}"
+                        echo "  PROTOCOL=${PROTOCOL}"
+                        echo "  DOMAIN=${DOMAIN}"
+                        echo "  PORT=${PORT}"
+                        echo "  PATH=${PATH}"
+                        echo "  METHOD=${METHOD}"
+                        echo "  TIMEOUT=${TIMEOUT}"
+                        echo ""
+                        
+                        jmeter -n -t template.xml \\
+                            -JUSERS=\${USERS} \\
+                            -JRAMP_UP=\${RAMP_UP} \\
+                            -JDURATION=\${DURATION} \\
+                            -JUSE_DURATION=\${USE_DURATION} \\
+                            -JPROTOCOL=\${PROTOCOL} \\
+                            -JDOMAIN=\${DOMAIN} \\
+                            -JPORT=\${PORT} \\
+                            -JPATH=\${PATH} \\
+                            -JMETHOD=\${METHOD} \\
+                            -JAUTHORIZATION="\${AUTHORIZATION}" \\
+                            -JCONTENT_TYPE=\${CONTENT_TYPE} \\
+                            -JASSERT_CONTAINS="\${ASSERT_CONTAINS}" \\
+                            -JTIMEOUT=\${TIMEOUT} \\
+                            -JREQUESTS_PER_SECOND=\${REQUESTS_PER_SECOND} \\
+                            -JRESULT_FILE=\${RESULT_FILE} \\
+                            -l \${RESULT_FILE}
+                    """
+                    
+                    // Vérifier que le fichier de résultats existe
+                    sh '''
+                        if [ ! -f ${RESULT_FILE} ]; then
+                            echo "❌ ERREUR: Fichier de résultats non créé!"
+                            exit 1
+                        fi
+                        echo "✅ Fichier de résultats créé: ${RESULT_FILE}"
+                        ls -lh ${RESULT_FILE}
+                    '''
+                }
+            }
+        }
+
+        stage('Generate HTML Report') {
+            steps {
+                script {
+                    echo '📊 Génération du rapport HTML...'
+                    
+                    sh """
+                        if [ -f \${RESULT_FILE} ]; then
+                            echo "Génération du rapport HTML..."
+                            jmeter -g \${RESULT_FILE} -o \${REPORT_DIR} || echo "⚠️  Génération du rapport HTML échouée (jmeter-plugins peut-être non installé)"
+                            
+                            if [ -d \${REPORT_DIR} ]; then
+                                echo "✅ Rapport HTML généré dans \${REPORT_DIR}"
+                            fi
+                        else
+                            echo "⚠️  Fichier de résultats non trouvé, pas de rapport HTML"
+                        fi
+                    """
+                }
+            }
+        }
+
+        stage('Parse Results and Send Callback') {
+            steps {
+                script {
+                    echo '📤 Parsing des résultats et envoi du callback...'
+                    
+                    // Parser les résultats JTL
+                    def metrics = parseJTLResults("${env.RESULT_FILE}")
+                    
+                    echo "Métriques extraites:"
+                    echo "  - Status: ${metrics.status}"
+                    echo "  - Avg Response Time: ${metrics.avgResponseTime}ms"
+                    echo "  - Max Response Time: ${metrics.maxResponseTime}ms"
+                    echo "  - P95 Response Time: ${metrics.p95ResponseTime}ms"
+                    echo "  - Error Rate: ${metrics.errorRate}%"
+                    
+                    // Construire le payload du callback
+                    def callbackPayload = [
+                        status: metrics.status,
+                        avgResponseTimeMs: metrics.avgResponseTime,
+                        maxResponseTimeMs: metrics.maxResponseTime,
+                        p95ResponseTimeMs: metrics.p95ResponseTime,
+                        errorRatePercent: metrics.errorRate,
+                        jmeterReportUrl: "${env.BUILD_URL}artifact/reports/report_${BUILD_NUMBER}/index.html"
+                    ]
+                    
+                    // Envoyer le callback au backend
+                    def callbackUrl = "${env.BACKEND_URL}/api/performance/results/${params.TEST_RESULT_ID}/callback"
+                    
+                    echo "Envoi du callback à: ${callbackUrl}"
+                    
+                    httpRequest(
+                        url: callbackUrl,
+                        httpMode: 'POST',
+                        contentType: 'APPLICATION_JSON',
+                        customHeaders: [[name: 'X-JENKINS-TOKEN', value: "${env.CALLBACK_TOKEN}"]],
+                        requestBody: groovy.json.JsonOutput.toJson(callbackPayload),
+                        validResponseCodes: '200:299'
+                    )
+                    
+                    echo "✅ Callback envoyé avec succès"
+                }
+            }
+        }
+
+        stage('Archive Artifacts') {
+            steps {
+                echo '📦 Archivage des artefacts...'
+                archiveArtifacts artifacts: "results/*.jtl, reports/**/*", allowEmptyArchive: true
+            }
+        }
+    }
+
+    post {
+        always {
+            echo '🧹 Nettoyage...'
+            // Optionnel : nettoyer les fichiers temporaires
+        }
+        success {
+            echo '✅ Pipeline terminé avec succès'
+        }
+        failure {
+            echo '❌ Pipeline échoué'
+            script {
+                // Envoyer un callback d'erreur si nécessaire
+                try {
+                    def errorPayload = [
+                        status: "FAILED",
+                        errorRatePercent: 100.0
+                    ]
+                    httpRequest(
+                        url: "${env.BACKEND_URL}/api/performance/results/${params.TEST_RESULT_ID}/callback",
+                        httpMode: 'POST',
+                        contentType: 'APPLICATION_JSON',
+                        customHeaders: [[name: 'X-JENKINS-TOKEN', value: "${env.CALLBACK_TOKEN}"]],
+                        requestBody: groovy.json.JsonOutput.toJson(errorPayload),
+                        validResponseCodes: '200:299'
+                    )
+                } catch (Exception e) {
+                    echo "⚠️  Impossible d'envoyer le callback d'erreur: ${e.message}"
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Parse le fichier JTL pour extraire les métriques
+ */
+def parseJTLResults(String jtlFile) {
+    def metrics = [:]
+    def responseTimes = []
+    def errors = 0
+    def total = 0
+    
+    try {
+        def lines = readFile(jtlFile).split('\n')
+        
+        lines.each { line ->
+            // Ignorer les lignes vides et les commentaires
+            if (line.trim().isEmpty() || line.startsWith('timeStamp')) {
+                return
+            }
+            
+            def cols = line.split(',')
+            if (cols.size() > 3) {
+                total++
+                try {
+                    def elapsed = cols[1].toInteger()
+                    responseTimes.add(elapsed)
+                    
+                    // Vérifier si c'est une erreur (colonne success = false)
+                    if (cols.size() > 7 && cols[7] == 'false') {
+                        errors++
+                    }
+                } catch (Exception e) {
+                    // Ignorer les lignes mal formées
+                }
+            }
+        }
+        
+        if (responseTimes.size() > 0) {
+            responseTimes.sort()
+            metrics.avgResponseTime = Math.round(responseTimes.sum() / responseTimes.size())
+            metrics.maxResponseTime = responseTimes.max()
+            metrics.p95ResponseTime = responseTimes[(int)(responseTimes.size() * 0.95)]
+            metrics.errorRate = total > 0 ? Math.round((errors / total) * 100 * 100) / 100 : 0.0
+            metrics.status = metrics.errorRate < 5 ? "PASSED" : "FAILED"
+        } else {
+            // Valeurs par défaut si aucun résultat
+            metrics.avgResponseTime = 0
+            metrics.maxResponseTime = 0
+            metrics.p95ResponseTime = 0
+            metrics.errorRate = 100.0
+            metrics.status = "FAILED"
+        }
+    } catch (Exception e) {
+        echo "⚠️  Erreur lors du parsing JTL: ${e.message}"
+        // Valeurs par défaut en cas d'erreur
+        metrics.avgResponseTime = 0
+        metrics.maxResponseTime = 0
+        metrics.p95ResponseTime = 0
+        metrics.errorRate = 100.0
+        metrics.status = "FAILED"
+    }
+    
+    return metrics
+}
+

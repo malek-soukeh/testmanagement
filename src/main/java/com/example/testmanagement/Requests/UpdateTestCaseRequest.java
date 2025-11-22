@@ -1,5 +1,6 @@
 package com.example.testmanagement.Requests;
 
+import com.example.testmanagement.DTOs.PerformanceConfigDTO;
 import com.example.testmanagement.Entities.TestCase;
 import lombok.Data;
 
@@ -17,4 +18,6 @@ public class UpdateTestCaseRequest {
     private TestCase.Status status;
     private List<CreateTestCaseStepRequest> steps; // Liste des steps à mettre à jour
     private String testUrl; // URL pour les tests automatisés
+    private PerformanceConfigDTO performanceConfig; // Paramètres de configuration du test de performance
+
 }

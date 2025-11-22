@@ -46,10 +46,35 @@ public class TestCaseService {
         testCase.setTestSuite(testSuite);
         testCase.setCreatedAt(LocalDateTime.now());
 
+        // Pour les tests de performance : pas de steps, seulement testUrl et performanceConfig
+        if (request.getTestType() == TestCase.TestType.PERFORMANCE) {
+            if (request.getTestUrl() == null || request.getTestUrl().isEmpty()) {
+                throw new RuntimeException("testUrl is required for PERFORMANCE test cases");
+            }
+            testCase.setTestUrl(request.getTestUrl());
+            
+            // Sérialiser performanceConfig en JSON
+            if (request.getPerformanceConfig() != null) {
+                try {
+                    ObjectMapper mapper = new ObjectMapper();
+                    String perfConfigJson = mapper.writeValueAsString(request.getPerformanceConfig());
+                    testCase.setPerformanceConfig(perfConfigJson);
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException("Failed to serialize performance config", e);
+                }
+            }
+        } else {
+            // Pour les autres types de tests, on peut avoir testUrl (pour AUTOMATED)
+            if (request.getTestUrl() != null) {
+                testCase.setTestUrl(request.getTestUrl());
+            }
+        }
         
         TestCase savedTestCase = testCaseRepository.save(testCase);
         
-        if(request.getSteps() != null && !request.getSteps().isEmpty()) {
+        // Pour les tests PERFORMANCE, on ne crée pas de steps
+        if (request.getTestType() != TestCase.TestType.PERFORMANCE && 
+            request.getSteps() != null && !request.getSteps().isEmpty()) {
             List<TestCaseStep> steps = request.getSteps().stream().map(stepReq ->{
                TestCaseStep testCaseStep = new TestCaseStep();
                testCaseStep.setStepName(stepReq.getStepName());
@@ -121,14 +146,26 @@ public class TestCaseService {
         if (request.getStatus() != null) testCase.setStatus(request.getStatus());
         if (request.getTestUrl() != null) testCase.setTestUrl(request.getTestUrl());
         
+        // Pour les tests de performance : mettre à jour performanceConfig
+        if (testCase.getTestType() == TestCase.TestType.PERFORMANCE && request.getPerformanceConfig() != null) {
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                String perfConfigJson = mapper.writeValueAsString(request.getPerformanceConfig());
+                testCase.setPerformanceConfig(perfConfigJson);
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException("Failed to serialize performance config", e);
+            }
+        }
+        
         // Mettre à jour la date de modification
         testCase.setUpdatedAt(LocalDateTime.now());
 
         // Sauvegarder le test case d'abord
         TestCase savedTestCase = testCaseRepository.save(testCase);
 
-        // Gérer la mise à jour des steps si fournis
-        if (request.getSteps() != null) {
+        // Pour les tests PERFORMANCE, on ne gère pas les steps
+        // Gérer la mise à jour des steps si fournis (uniquement pour les autres types)
+        if (testCase.getTestType() != TestCase.TestType.PERFORMANCE && request.getSteps() != null) {
             // Supprimer tous les anciens steps
             List<TestCaseStep> existingSteps = testCaseStepRepository.findByTestCaseId(id);
             if (!existingSteps.isEmpty()) {
