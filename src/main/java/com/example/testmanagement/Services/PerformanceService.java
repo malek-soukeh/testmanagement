@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -35,6 +36,7 @@ public class PerformanceService {
     private final TestRunRepository testRunRepo;
     private final TestResultRepository testResultRepo;
     private final JenkinsConfig jenkinsConfig;
+    private final SimpMessagingTemplate messagingTemplate;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -71,6 +73,15 @@ public class PerformanceService {
 
         User user = userRepo.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Mettre à jour le statut du test case
+        testCase.setStatus(TestCase.Status.RUNNING);
+        testCase.setUpdatedAt(LocalDateTime.now());
+        testCaseRepo.save(testCase);
+        messagingTemplate.convertAndSend("/topic/test-status", Map.of(
+                "testCaseId", testCase.getId(),
+                "status", testCase.getStatus().name()
+        ));
 
         // Créer TestRun
         TestRun run = new TestRun();
@@ -185,7 +196,20 @@ public class PerformanceService {
             testRunRepo.save(run);
         }
 
-        // optionally send WebSocket/SSE event to frontend
+        // mettre à jour le test case et notifier le frontend
+        TestCase testCase = result.getTestCase();
+        if (testCase != null) {
+            testCase.setStatus(result.getStatus() == TestResult.ResultStatus.PASSED ? TestCase.Status.PASSED : TestCase.Status.FAILED);
+            testCase.setUpdatedAt(LocalDateTime.now());
+            testCaseRepo.save(testCase);
+
+            messagingTemplate.convertAndSend("/topic/test-status", Map.of(
+                    "testCaseId", testCase.getId(),
+                    "status", testCase.getStatus().name(),
+                    "avgResponseTime", avg,
+                    "errorRate", errRate
+            ));
+        }
     }
 
     public TestResult getTestResult(Long id) {
