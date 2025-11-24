@@ -75,13 +75,7 @@ public class PerformanceService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         // Mettre à jour le statut du test case
-        testCase.setStatus(TestCase.Status.RUNNING);
-        testCase.setUpdatedAt(LocalDateTime.now());
-        testCaseRepo.save(testCase);
-        messagingTemplate.convertAndSend("/topic/test-status", Map.of(
-                "testCaseId", testCase.getId(),
-                "status", testCase.getStatus().name()
-        ));
+        updateTestCaseStatus(testCase, TestCase.Status.RUNNING);
 
         // Créer TestRun
         TestRun run = new TestRun();
@@ -120,37 +114,38 @@ public class PerformanceService {
         // Essayer d'abord avec CSRF token, puis sans si ça échoue
         ResponseEntity<String> resp;
         try {
-            // Récupérer le CSRF token (Jenkins Crumb)
-            String jenkinsCrumb = getJenkinsCrumb(jenkinsJobUrl, jenkinsUser, jenkinsToken);
+            try {
+                // Récupérer le CSRF token (Jenkins Crumb)
+                String jenkinsCrumb = getJenkinsCrumb(jenkinsJobUrl, jenkinsUser, jenkinsToken);
 
-            // call jenkins - use form data
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-            headers.setBasicAuth(jenkinsUser, jenkinsToken);
-            
-            // Ajouter le CSRF token si disponible
-            if (jenkinsCrumb != null && !jenkinsCrumb.isEmpty()) {
-                headers.add("Jenkins-Crumb", jenkinsCrumb);
+                // call jenkins - use form data
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+                headers.setBasicAuth(jenkinsUser, jenkinsToken);
+                
+                // Ajouter le CSRF token si disponible
+                if (jenkinsCrumb != null && !jenkinsCrumb.isEmpty()) {
+                    headers.add("Jenkins-Crumb", jenkinsCrumb);
+                }
+
+                MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+                body.add("SCENARIO_JSON", scenarioJson);
+                body.add("TEST_RESULT_ID", result.getId().toString());
+
+                HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
+                resp = restTemplate.postForEntity(jenkinsJobUrl, request, String.class);
+            } catch (Exception e) {
+                // Si l'appel avec form data échoue, essayer avec les paramètres dans l'URL
+                System.err.println("Form data approach failed, trying URL parameters: " + e.getMessage());
+                resp = triggerJenkinsWithUrlParams(jenkinsJobUrl, scenarioJson, result.getId().toString(), jenkinsUser, jenkinsToken);
             }
-
-            MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-            body.add("SCENARIO_JSON", scenarioJson);
-            body.add("TEST_RESULT_ID", result.getId().toString());
-
-            HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
-            resp = restTemplate.postForEntity(jenkinsJobUrl, request, String.class);
-        } catch (Exception e) {
-            // Si l'appel avec form data échoue, essayer avec les paramètres dans l'URL
-            System.err.println("Form data approach failed, trying URL parameters: " + e.getMessage());
-            resp = triggerJenkinsWithUrlParams(jenkinsJobUrl, scenarioJson, result.getId().toString(), jenkinsUser, jenkinsToken);
+        } catch (RuntimeException ex) {
+            markExecutionFailure(testCase, run, result);
+            throw ex;
         }
 
         if (!resp.getStatusCode().is2xxSuccessful() && resp.getStatusCode() != HttpStatus.CREATED) {
-            // mark result failed
-            result.setStatus(TestResult.ResultStatus.FAILED);
-            testResultRepo.save(result);
-            run.setStatus(TestRun.RunStatus.FAILED);
-            testRunRepo.save(run);
+            markExecutionFailure(testCase, run, result);
             throw new RuntimeException("Jenkins job trigger failed: " + resp.getStatusCode());
         }
 
@@ -199,16 +194,13 @@ public class PerformanceService {
         // mettre à jour le test case et notifier le frontend
         TestCase testCase = result.getTestCase();
         if (testCase != null) {
-            testCase.setStatus(result.getStatus() == TestResult.ResultStatus.PASSED ? TestCase.Status.PASSED : TestCase.Status.FAILED);
-            testCase.setUpdatedAt(LocalDateTime.now());
-            testCaseRepo.save(testCase);
-
-            messagingTemplate.convertAndSend("/topic/test-status", Map.of(
-                    "testCaseId", testCase.getId(),
-                    "status", testCase.getStatus().name(),
-                    "avgResponseTime", avg,
-                    "errorRate", errRate
-            ));
+            TestCase.Status finalStatus = result.getStatus() == TestResult.ResultStatus.PASSED
+                    ? TestCase.Status.PASSED
+                    : TestCase.Status.FAILED;
+            Map<String, Object> extras = new HashMap<>();
+            extras.put("avgResponseTime", avg);
+            extras.put("errorRate", errRate);
+            updateTestCaseStatus(testCase, finalStatus, extras);
         }
     }
 
@@ -327,5 +319,37 @@ public class PerformanceService {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private void updateTestCaseStatus(TestCase testCase, TestCase.Status status) {
+        updateTestCaseStatus(testCase, status, null);
+    }
+
+    private void updateTestCaseStatus(TestCase testCase, TestCase.Status status, Map<String, Object> extraPayload) {
+        testCase.setStatus(status);
+        testCase.setUpdatedAt(LocalDateTime.now());
+        testCaseRepo.save(testCase);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("testCaseId", testCase.getId());
+        payload.put("status", status.name());
+        if (extraPayload != null) {
+            extraPayload.forEach((k, v) -> {
+                if (v != null) {
+                    payload.put(k, v);
+                }
+            });
+        }
+
+        messagingTemplate.convertAndSend("/topic/test-status", payload);
+    }
+
+    private void markExecutionFailure(TestCase testCase, TestRun run, TestResult result) {
+        result.setStatus(TestResult.ResultStatus.FAILED);
+        testResultRepo.save(result);
+        run.setStatus(TestRun.RunStatus.FAILED);
+        run.setCompletedAt(LocalDateTime.now());
+        testRunRepo.save(run);
+        updateTestCaseStatus(testCase, TestCase.Status.FAILED);
     }
 }
