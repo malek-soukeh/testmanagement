@@ -104,6 +104,13 @@ public class TestCaseService {
     }
 
     @Transactional(readOnly = true)
+    public TestCase getTestCaseDetails(Long suiteId, Long id) {
+        return testCaseRepository.findByIdAndTestSuiteIdWithSteps(id, suiteId)
+                .orElseThrow(() -> new RuntimeException(
+                        "Test case not found with id: " + id + " in suite: " + suiteId));
+    }
+
+    @Transactional(readOnly = true)
     public List<TestCase> getTestCasesByUser(String username) {
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new RuntimeException("User not found: " + username));

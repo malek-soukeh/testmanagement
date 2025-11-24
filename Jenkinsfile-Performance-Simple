@@ -1,0 +1,392 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'SCENARIO_JSON', description: 'JSON scenario from backend')
+        string(name: 'TEST_RESULT_ID', description: 'Test result ID for callback')
+    }
+
+    environment {
+        // Configuration Git
+        GIT_REPO = 'https://github.com/malek-soukeh/testmanagement.git'
+        GIT_BRANCH = 'master'
+        
+        // Configuration Backend
+        BACKEND_URL = 'http://192.168.56.1:8081'
+        CALLBACK_TOKEN = credentials('jenkins-callback-token') ?: '5c7af1e8-ba95-442f-a5e2-d0f18c7051e6'
+        
+        // Chemins
+        RESULTS_DIR = "${WORKSPACE}/results"
+        REPORTS_DIR = "${WORKSPACE}/reports"
+    }
+
+    stages {
+        stage('Checkout Git Repository') {
+            steps {
+                echo '📥 Clonage du dépôt Git pour récupérer template.xml...'
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "*/${GIT_BRANCH}"]],
+                    userRemoteConfigs: [[url: "${GIT_REPO}"]]
+                ])
+                
+                sh '''
+                    echo "Vérification de template.xml..."
+                    if [ -f template.xml ]; then
+                        echo "✅ template.xml trouvé"
+                        ls -lh template.xml
+                    else
+                        echo "❌ ERREUR: template.xml non trouvé!"
+                        exit 1
+                    fi
+                '''
+            }
+        }
+
+        stage('Parse JSON and Extract Parameters') {
+            steps {
+                script {
+                    echo '📋 Parsing du scénario JSON...'
+                    
+                    if (!params.SCENARIO_JSON || params.SCENARIO_JSON.trim().isEmpty()) {
+                        error("❌ SCENARIO_JSON parameter is required")
+                    }
+                    
+                    if (!params.TEST_RESULT_ID || params.TEST_RESULT_ID.trim().isEmpty()) {
+                        error("❌ TEST_RESULT_ID parameter is required")
+                    }
+                    
+                    // Parser le JSON avec Python (disponible sur la plupart des systèmes)
+                    sh """
+                        python3 << 'PYTHON_SCRIPT'
+import json
+import sys
+import os
+from urllib.parse import urlparse
+
+scenario_json = '''${params.SCENARIO_JSON}'''
+try:
+    data = json.loads(scenario_json)
+    
+    # Parser l'URL
+    url = data.get('url', '')
+    if url:
+        parsed = urlparse(url)
+        protocol = parsed.scheme
+        domain = parsed.netloc.split(':')[0] if ':' in parsed.netloc else parsed.netloc
+        port = parsed.port if parsed.port else ''
+        path = parsed.path if parsed.path else '/'
+    else:
+        protocol = 'http'
+        domain = 'localhost'
+        port = ''
+        path = '/'
+    
+    # Extraire les paramètres de performance
+    perf = data.get('performance', {})
+    users = str(perf.get('numberOfUsers', 10))
+    ramp_up = str(perf.get('rampUpSeconds', 10))
+    duration = str(perf.get('durationSeconds', 60))
+    timeout = str(perf.get('timeoutMs', 5000))
+    requests_per_second = str(perf.get('requestsPerSecond', '')) if perf.get('requestsPerSecond') else ''
+    
+    # Paramètres supplémentaires
+    add_params = perf.get('additionalParams', {})
+    method = add_params.get('method', 'GET')
+    authorization = add_params.get('authorization', '')
+    content_type = add_params.get('contentType', 'application/json')
+    
+    # Écrire les variables d'environnement dans un fichier
+    with open('${WORKSPACE}/jenkins_env.sh', 'w') as f:
+        f.write(f'export PROTOCOL={protocol}\\n')
+        f.write(f'export DOMAIN={domain}\\n')
+        f.write(f'export PORT={port}\\n')
+        f.write(f'export PATH={path}\\n')
+        f.write(f'export USERS={users}\\n')
+        f.write(f'export RAMP_UP={ramp_up}\\n')
+        f.write(f'export DURATION={duration}\\n')
+        f.write(f'export TIMEOUT={timeout}\\n')
+        f.write(f'export REQUESTS_PER_SECOND={requests_per_second}\\n')
+        f.write(f'export METHOD={method}\\n')
+        f.write(f'export AUTHORIZATION={authorization}\\n')
+        f.write(f'export CONTENT_TYPE={content_type}\\n')
+    
+    print("✅ Paramètres extraits avec succès")
+except Exception as e:
+    print(f"❌ Erreur lors du parsing JSON: {e}", file=sys.stderr)
+    sys.exit(1)
+PYTHON_SCRIPT
+                    """
+                    
+                    // Charger les variables d'environnement
+                    sh '''
+                        source ${WORKSPACE}/jenkins_env.sh
+                        echo "Paramètres extraits:"
+                        echo "  URL: $PROTOCOL://$DOMAIN${PORT:+:$PORT}$PATH"
+                        echo "  Users: $USERS"
+                        echo "  Ramp-up: ${RAMP_UP}s"
+                        echo "  Duration: ${DURATION}s"
+                        echo "  Timeout: ${TIMEOUT}ms"
+                        echo "  Method: $METHOD"
+                    '''
+                    
+                    // Créer les répertoires
+                    sh '''
+                        mkdir -p ${RESULTS_DIR}
+                        mkdir -p ${REPORTS_DIR}
+                    '''
+                }
+            }
+        }
+
+        stage('Run JMeter Test') {
+            steps {
+                script {
+                    echo '🚀 Exécution du test JMeter...'
+                    
+                    sh '''
+                        source ${WORKSPACE}/jenkins_env.sh
+                        
+                        RESULT_FILE="${RESULTS_DIR}/result_${BUILD_NUMBER}.jtl"
+                        
+                        echo "Paramètres JMeter:"
+                        echo "  USERS=$USERS"
+                        echo "  RAMP_UP=$RAMP_UP"
+                        echo "  DURATION=$DURATION"
+                        echo "  PROTOCOL=$PROTOCOL"
+                        echo "  DOMAIN=$DOMAIN"
+                        echo "  PORT=$PORT"
+                        echo "  PATH=$PATH"
+                        echo "  METHOD=$METHOD"
+                        echo "  TIMEOUT=$TIMEOUT"
+                        echo ""
+                        
+                        jmeter -n -t template.xml \\
+                            -JUSERS=$USERS \\
+                            -JRAMP_UP=$RAMP_UP \\
+                            -JDURATION=$DURATION \\
+                            -JUSE_DURATION=true \\
+                            -JPROTOCOL=$PROTOCOL \\
+                            -JDOMAIN=$DOMAIN \\
+                            -JPORT=$PORT \\
+                            -JPATH=$PATH \\
+                            -JMETHOD=$METHOD \\
+                            -JAUTHORIZATION="$AUTHORIZATION" \\
+                            -JCONTENT_TYPE=$CONTENT_TYPE \\
+                            -JTIMEOUT=$TIMEOUT \\
+                            -JREQUESTS_PER_SECOND=$REQUESTS_PER_SECOND \\
+                            -JRESULT_FILE=$RESULT_FILE \\
+                            -l $RESULT_FILE
+                        
+                        if [ ! -f $RESULT_FILE ]; then
+                            echo "❌ ERREUR: Fichier de résultats non créé!"
+                            exit 1
+                        fi
+                        echo "✅ Fichier de résultats créé: $RESULT_FILE"
+                        ls -lh $RESULT_FILE
+                    """
+                }
+            }
+        }
+
+        stage('Generate HTML Report') {
+            steps {
+                script {
+                    echo '📊 Génération du rapport HTML...'
+                    
+                    sh """
+                        source ${WORKSPACE}/jenkins_env.sh
+                        RESULT_FILE="${RESULTS_DIR}/result_${BUILD_NUMBER}.jtl"
+                        REPORT_DIR="${REPORTS_DIR}/report_${BUILD_NUMBER}"
+                        
+                        if [ -f $RESULT_FILE ]; then
+                            echo "Génération du rapport HTML..."
+                            jmeter -g $RESULT_FILE -o $REPORT_DIR || echo "⚠️  Génération du rapport HTML échouée (jmeter-plugins peut-être non installé)"
+                            
+                            if [ -d $REPORT_DIR ]; then
+                                echo "✅ Rapport HTML généré dans $REPORT_DIR"
+                            fi
+                        else
+                            echo "⚠️  Fichier de résultats non trouvé, pas de rapport HTML"
+                        fi
+                    """
+                }
+            }
+        }
+
+        stage('Parse Results and Send Callback') {
+            steps {
+                script {
+                    echo '📤 Parsing des résultats et envoi du callback...'
+                    
+                    sh """
+                        source ${WORKSPACE}/jenkins_env.sh
+                        export RESULT_FILE="${RESULTS_DIR}/result_${BUILD_NUMBER}.jtl"
+                        export TEST_RESULT_ID="${params.TEST_RESULT_ID}"
+                        export BACKEND_URL="${BACKEND_URL}"
+                        export CALLBACK_TOKEN="${CALLBACK_TOKEN}"
+                        export BUILD_URL="${env.BUILD_URL}"
+                        export BUILD_NUMBER="${env.BUILD_NUMBER}"
+                        
+                        python3 << 'PYTHON_SCRIPT'
+import csv
+import sys
+import os
+import json
+
+result_file = os.environ.get('RESULT_FILE', '')
+test_result_id = os.environ.get('TEST_RESULT_ID', '')
+backend_url = os.environ.get('BACKEND_URL', 'http://192.168.56.1:8081')
+callback_token = os.environ.get('CALLBACK_TOKEN', '')
+build_url = os.environ.get('BUILD_URL', '')
+build_number = os.environ.get('BUILD_NUMBER', '')
+
+response_times = []
+errors = 0
+total = 0
+
+try:
+    with open(result_file, 'r') as f:
+        reader = csv.reader(f)
+        for row in reader:
+            if len(row) < 2 or row[0] == 'timeStamp':
+                continue
+            total += 1
+            try:
+                elapsed = int(row[1])
+                response_times.append(elapsed)
+                if len(row) > 7 and row[7] == 'false':
+                    errors += 1
+            except:
+                pass
+    
+    if response_times:
+        response_times.sort()
+        avg = round(sum(response_times) / len(response_times))
+        max_time = max(response_times)
+        p95 = response_times[int(len(response_times) * 0.95)]
+        error_rate = round((errors / total) * 100 * 100) / 100 if total > 0 else 100.0
+        status = "PASSED" if error_rate < 5 else "FAILED"
+        
+        # Construire le payload
+        payload = {
+            "status": status,
+            "avgResponseTimeMs": avg,
+            "maxResponseTimeMs": max_time,
+            "p95ResponseTimeMs": p95,
+            "errorRatePercent": error_rate,
+            "jmeterReportUrl": f"{build_url}artifact/reports/report_{build_number}/index.html"
+        }
+        
+        # Envoyer le callback avec curl
+        import subprocess
+        import urllib.parse
+        
+        callback_url = f"{backend_url}/api/performance/results/{test_result_id}/callback"
+        json_payload = json.dumps(payload)
+        
+        curl_cmd = [
+            'curl', '-X', 'POST',
+            callback_url,
+            '-H', 'Content-Type: application/json',
+            '-H', f'X-JENKINS-TOKEN: {callback_token}',
+            '-d', json_payload,
+            '-w', '\\nHTTP Status: %{http_code}'
+        ]
+        
+        result = subprocess.run(curl_cmd, capture_output=True, text=True)
+        
+        if result.returncode == 0 and '200' in result.stdout or '201' in result.stdout:
+            print("✅ Callback envoyé avec succès")
+            print(f"Métriques: avg={avg}ms, max={max_time}ms, p95={p95}ms, errorRate={error_rate}%")
+        else:
+            print(f"⚠️  Erreur lors de l'envoi du callback: {result.stderr}", file=sys.stderr)
+            print(f"Response: {result.stdout}", file=sys.stderr)
+    else:
+        print("⚠️  Aucun résultat trouvé dans le fichier JTL", file=sys.stderr)
+        # Envoyer un callback d'erreur
+        payload = {
+            "status": "FAILED",
+            "avgResponseTimeMs": 0,
+            "maxResponseTimeMs": 0,
+            "p95ResponseTimeMs": 0,
+            "errorRatePercent": 100.0
+        }
+        import subprocess
+        callback_url = f"{backend_url}/api/performance/results/{test_result_id}/callback"
+        curl_cmd = [
+            'curl', '-X', 'POST',
+            callback_url,
+            '-H', 'Content-Type: application/json',
+            '-H', f'X-JENKINS-TOKEN: {callback_token}',
+            '-d', json.dumps(payload)
+        ]
+        subprocess.run(curl_cmd)
+        
+except Exception as e:
+    print(f"❌ Erreur lors du parsing JTL: {e}", file=sys.stderr)
+    sys.exit(1)
+PYTHON_SCRIPT
+                    """
+                }
+            }
+        }
+
+        stage('Archive Artifacts') {
+            steps {
+                echo '📦 Archivage des artefacts...'
+                archiveArtifacts artifacts: "results/*.jtl, reports/**/*", allowEmptyArchive: true
+            }
+        }
+    }
+
+    post {
+        always {
+            echo '🧹 Nettoyage...'
+        }
+        success {
+            echo '✅ Pipeline terminé avec succès'
+        }
+        failure {
+            echo '❌ Pipeline échoué'
+            script {
+                // Envoyer un callback d'erreur si nécessaire
+                sh """
+                    export TEST_RESULT_ID="${params.TEST_RESULT_ID}"
+                    export BACKEND_URL="${BACKEND_URL}"
+                    export CALLBACK_TOKEN="${CALLBACK_TOKEN}"
+                    
+                    python3 << 'PYTHON_SCRIPT'
+import os
+import json
+import subprocess
+
+test_result_id = os.environ.get('TEST_RESULT_ID', '')
+backend_url = os.environ.get('BACKEND_URL', 'http://192.168.56.1:8081')
+callback_token = os.environ.get('CALLBACK_TOKEN', '')
+
+if test_result_id:
+    error_payload = {
+        "status": "FAILED",
+        "errorRatePercent": 100.0
+    }
+    callback_url = f"{backend_url}/api/performance/results/{test_result_id}/callback"
+    curl_cmd = [
+        'curl', '-X', 'POST',
+        callback_url,
+        '-H', 'Content-Type: application/json',
+        '-H', f'X-JENKINS-TOKEN: {callback_token}',
+        '-d', json.dumps(error_payload),
+        '--silent', '--output', '/dev/null'
+    ]
+    try:
+        subprocess.run(curl_cmd, timeout=5)
+    except:
+        pass
+PYTHON_SCRIPT
+                """
+            }
+        }
+    }
+}
+

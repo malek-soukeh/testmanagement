@@ -1,6 +1,5 @@
 package com.example.testmanagement.Controllers;
 
-import com.example.testmanagement.Entities.Role;
 import com.example.testmanagement.Entities.User;
 import com.example.testmanagement.Requests.LoginRequest;
 import com.example.testmanagement.Requests.SignUpRequest;
@@ -32,13 +31,22 @@ public class AuthController {
     }
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
-        Map<String, Object> response = new HashMap<>();
-        response.put("id", user.getId());
-        response.put("email", user.getEmail());
-        response.put("roles", user.getRoles().stream()
-                .map(Role::getName)
-                .collect(Collectors.toList()));
+        if (authentication.getPrincipal() instanceof com.example.testmanagement.Security.CustomUserDetails) {
+            com.example.testmanagement.Security.CustomUserDetails userDetails = 
+                (com.example.testmanagement.Security.CustomUserDetails) authentication.getPrincipal();
+            User user = userDetails.getUser();
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", user.getId());
+            response.put("email", user.getEmail());
+            response.put("authorities", userDetails.getAuthorities().stream()
+                    .map(auth -> {
+                        Map<String, String> authMap = new HashMap<>();
+                        authMap.put("authority", auth.getAuthority());
+                        return authMap;
+                    })
+                    .collect(Collectors.toList()));
+            return ResponseEntity.ok(response);
+        }
         return ResponseEntity.ok(authentication.getPrincipal());
     }
 

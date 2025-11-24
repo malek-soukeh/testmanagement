@@ -7,7 +7,6 @@ import com.example.testmanagement.Requests.UpdateTestCaseRequest;
 import com.example.testmanagement.Responses.TestCaseResponse;
 import com.example.testmanagement.Services.TestCaseService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -50,6 +49,18 @@ public class TestCaseController {
     @GetMapping("/{id}")
     public ResponseEntity<TestCaseResponse> getTestCaseById(@PathVariable Long id) {
         TestCase testCase = testCaseService.getTestCaseById(id);
+        return ResponseEntity.ok(TestCaseResponse.fromEntity(testCase));
+    }
+
+    /**
+     * Récupère les détails complets d'un test case (steps, performance config, etc.)
+     */
+    @GetMapping("/{id}/details")
+    public ResponseEntity<TestCaseResponse> getTestCaseDetails(
+            @PathVariable Long testsuiteId,
+            @PathVariable Long id) {
+
+        TestCase testCase = testCaseService.getTestCaseDetails(testsuiteId, id);
         return ResponseEntity.ok(TestCaseResponse.fromEntity(testCase));
     }
 

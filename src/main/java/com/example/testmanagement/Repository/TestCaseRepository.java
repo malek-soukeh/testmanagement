@@ -4,6 +4,7 @@ import com.example.testmanagement.Entities.TestCase;
 import com.example.testmanagement.Entities.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -33,4 +34,9 @@ public interface TestCaseRepository extends JpaRepository<TestCase,Long> {
             "left join fetch tc.testCaseSteps " +
             "where tc.id = :id")
     Optional<TestCase> findByIdWithSteps(Long id);
+
+    @Query("select tc from TestCase tc " +
+            "left join fetch tc.testCaseSteps " +
+            "where tc.id = :id and tc.testSuite.id = :suiteId")
+    Optional<TestCase> findByIdAndTestSuiteIdWithSteps(@Param("id") Long id, @Param("suiteId") Long suiteId);
 }
