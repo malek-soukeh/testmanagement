@@ -66,8 +66,9 @@
                 <!-- Constant Throughput Timer -->
                 <ConstantThroughputTimer guiclass="TestBeanGUI" testclass="ConstantThroughputTimer" testname="Constant Throughput Timer" enabled="true">
                     <stringProp name="calcMode">0</stringProp>
-                    <doubleProp name="throughput">${REQUESTS_PER_SECOND}</doubleProp>
+                    <doubleProp name="throughput">${__P(REQUESTS_PER_SECOND,1)}</doubleProp>
                 </ConstantThroughputTimer>
+
                 <hashTree/>
 
                 <!-- HTTP Sampler -->
