@@ -1,70 +1,57 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.7">
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.2">
     <hashTree>
-        <!-- Plan de test -->
-        <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Dynamic Test Plan" enabled="true">
+        <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Dynamic Public Test" enabled="true">
             <stringProp name="TestPlan.comments"></stringProp>
             <boolProp name="TestPlan.functional_mode">false</boolProp>
             <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
             <elementProp name="TestPlan.user_defined_variables" elementType="Arguments">
                 <collectionProp name="Arguments.arguments">
-                    <elementProp name="USERS" elementType="Argument">
-                        <stringProp name="Argument.name">USERS</stringProp>
-                        <stringProp name="Argument.value">${__P(USERS,1)}</stringProp>
-                        <stringProp name="Argument.metadata">=</stringProp>
-                    </elementProp>
-                    <elementProp name="RAMP_UP" elementType="Argument">
-                        <stringProp name="Argument.name">RAMP_UP</stringProp>
-                        <stringProp name="Argument.value">${__P(RAMP_UP,1)}</stringProp>
-                        <stringProp name="Argument.metadata">=</stringProp>
-                    </elementProp>
-                    <elementProp name="DURATION" elementType="Argument">
-                        <stringProp name="Argument.name">DURATION</stringProp>
-                        <stringProp name="Argument.value">${__P(DURATION,30)}</stringProp>
-                        <stringProp name="Argument.metadata">=</stringProp>
-                    </elementProp>
                     <elementProp name="PROTOCOL" elementType="Argument">
                         <stringProp name="Argument.name">PROTOCOL</stringProp>
-                        <stringProp name="Argument.value">${__P(PROTOCOL,http)}</stringProp>
-                        <stringProp name="Argument.metadata">=</stringProp>
+                        <stringProp name="Argument.value">https</stringProp>
                     </elementProp>
                     <elementProp name="DOMAIN" elementType="Argument">
                         <stringProp name="Argument.name">DOMAIN</stringProp>
-                        <stringProp name="Argument.value">${__P(DOMAIN,www.orange.tn)}</stringProp>
-                        <stringProp name="Argument.metadata">=</stringProp>
+                        <stringProp name="Argument.value">www.orange.tn</stringProp>
                     </elementProp>
                     <elementProp name="PATH" elementType="Argument">
                         <stringProp name="Argument.name">PATH</stringProp>
-                        <stringProp name="Argument.value">${__P(PATH,/)</stringProp>
-                        <stringProp name="Argument.metadata">=</stringProp>
+                        <stringProp name="Argument.value">/</stringProp>
                     </elementProp>
                     <elementProp name="METHOD" elementType="Argument">
                         <stringProp name="Argument.name">METHOD</stringProp>
-                        <stringProp name="Argument.value">${__P(METHOD,GET)}</stringProp>
-                        <stringProp name="Argument.metadata">=</stringProp>
+                        <stringProp name="Argument.value">GET</stringProp>
+                    </elementProp>
+                    <elementProp name="USERS" elementType="Argument">
+                        <stringProp name="Argument.name">USERS</stringProp>
+                        <stringProp name="Argument.value">5</stringProp>
+                    </elementProp>
+                    <elementProp name="RAMP_UP" elementType="Argument">
+                        <stringProp name="Argument.name">RAMP_UP</stringProp>
+                        <stringProp name="Argument.value">5</stringProp>
+                    </elementProp>
+                    <elementProp name="DURATION" elementType="Argument">
+                        <stringProp name="Argument.name">DURATION</stringProp>
+                        <stringProp name="Argument.value">30</stringProp>
                     </elementProp>
                 </collectionProp>
             </elementProp>
             <stringProp name="TestPlan.user_define_classpath"></stringProp>
         </TestPlan>
         <hashTree>
-            <!-- Thread Group dynamique -->
-            <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Dynamic Users ThreadGroup" enabled="true">
+            <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Dynamic Users Thread" enabled="true">
                 <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
                 <elementProp name="ThreadGroup.main_controller" elementType="LoopController">
                     <boolProp name="LoopController.continue_forever">false</boolProp>
-                    <intProp name="LoopController.loops">-1</intProp>
+                    <stringProp name="LoopController.loops">-1</stringProp>
                 </elementProp>
                 <stringProp name="ThreadGroup.num_threads">${USERS}</stringProp>
                 <stringProp name="ThreadGroup.ramp_time">${RAMP_UP}</stringProp>
-                <longProp name="ThreadGroup.start_time">0</longProp>
-                <longProp name="ThreadGroup.end_time">0</longProp>
                 <boolProp name="ThreadGroup.scheduler">true</boolProp>
                 <stringProp name="ThreadGroup.duration">${DURATION}</stringProp>
-                <stringProp name="ThreadGroup.delay">0</stringProp>
             </ThreadGroup>
             <hashTree>
-                <!-- HTTP Request -->
                 <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="HTTP Request" enabled="true">
                     <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
                         <collectionProp name="Arguments.arguments"/>
@@ -77,20 +64,15 @@
                     <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
                     <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
                     <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
-                    <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
-                    <stringProp name="HTTPSampler.monitor">false</stringProp>
-                    <stringProp name="HTTPSampler.embedded_url_re"></stringProp>
                 </HTTPSamplerProxy>
                 <hashTree/>
-                <!-- Summary / Listener minimal -->
-                <ResultCollector guiclass="SummaryReport" testclass="ResultCollector" testname="Summary Report" enabled="true">
+                <ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="View Results Tree" enabled="true">
                     <boolProp name="ResultCollector.error_logging">false</boolProp>
                     <objProp>
                         <name>saveConfig</name>
                         <value class="SampleSaveConfiguration">
                             <time>true</time>
                             <latency>true</latency>
-                            <timestamp>true</timestamp>
                             <success>true</success>
                             <label>true</label>
                             <code>true</code>
@@ -111,7 +93,7 @@
                             <assertionsResultsToSave>0</assertionsResultsToSave>
                         </value>
                     </objProp>
-                    <stringProp name="filename">${__P(RESULT_FILE,result.jtl)}</stringProp>
+                    <stringProp name="filename">${RESULT_FILE}</stringProp>
                 </ResultCollector>
                 <hashTree/>
             </hashTree>
