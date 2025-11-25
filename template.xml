@@ -55,7 +55,7 @@
                 <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
                 <elementProp name="ThreadGroup.main_controller" elementType="LoopController">
                     <boolProp name="LoopController.continue_forever">false</boolProp>
-                    <intProp name="LoopController.loops">-1</intProp>
+                    <intProp name="LoopController.loops">1</intProp>
                 </elementProp>
                 <stringProp name="ThreadGroup.num_threads">${USERS}</stringProp>
                 <stringProp name="ThreadGroup.ramp_time">${RAMP_UP}</stringProp>
