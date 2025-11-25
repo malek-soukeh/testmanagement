@@ -98,7 +98,8 @@ pipeline {
                         summaryJson: summaryContent,
                         artifactUrl: env.SUMMARY_FILE ? "${env.BUILD_URL}artifact/${env.SUMMARY_FILE}" : null
                     ]
-                    writeJSON file: 'callback-payload.json', json: callbackPayload, pretty: 2
+                    def payloadJson = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(callbackPayload))
+                    writeFile file: 'callback-payload.json', text: payloadJson
                     sh """
                         curl -X POST \\
                             -H "Content-Type: application/json" \\
