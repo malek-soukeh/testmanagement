@@ -102,9 +102,18 @@ pipeline {
                         ]))
                     }
 
-                    String artifactHref = "${env.BUILD_URL}artifact/target/selenium-runs/"
-                    if (env.SUMMARY_FILE?.trim()) {
+                    def artifactHref = ""
+                    def latestRunDir = sh(
+                        script: "ls -td target/selenium-runs/* 2>/dev/null | head -n 1 || true",
+                        returnStdout: true
+                    ).trim()
+                    if (latestRunDir) {
+                        def relPath = latestRunDir.startsWith("${env.WORKSPACE}/") ? latestRunDir.substring(env.WORKSPACE.length() + 1) : latestRunDir
+                        artifactHref = "${env.BUILD_URL}artifact/${relPath}/"
+                    } else if (env.SUMMARY_FILE?.trim()) {
                         artifactHref = "${env.BUILD_URL}artifact/${env.SUMMARY_FILE}"
+                    } else {
+                        artifactHref = "${env.BUILD_URL}artifact/target/selenium-runs/"
                     }
 
                     def callbackPayload = [
