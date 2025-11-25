@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface TestResultRepository extends JpaRepository<TestResult,Long> {
     List<TestResult> findByTestRunId(Long runId);
@@ -19,4 +20,6 @@ public interface TestResultRepository extends JpaRepository<TestResult,Long> {
             "JOIN ts.project p " +
             "WHERE p.id = :projectId")
     List<TestResult> findByProjectId(@Param("projectId") Long projectId);
+
+    Optional<TestResult> findTopByTestCaseIdOrderByExecutedAtDesc(Long testCaseId);
 }

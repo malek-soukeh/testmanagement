@@ -53,6 +53,8 @@ public class SecurityConfig {
                         .requestMatchers("/auth/**", "/public/**","/auth/me").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/test-case/*/trigger").authenticated()
+                        .requestMatchers("/api/tests/results/**").permitAll()
+                        .requestMatchers("/api/performance/results/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/test-results/lasttestresult").permitAll()
                         .requestMatchers("/api/performance-tests/**").permitAll()
                         .requestMatchers("/api/performance/**").authenticated()

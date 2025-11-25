@@ -14,5 +14,7 @@ public class JenkinsConfig {
     private String jobUrl;
     private String user;
     private String token;
+    private String callbackToken;
+
 }
 

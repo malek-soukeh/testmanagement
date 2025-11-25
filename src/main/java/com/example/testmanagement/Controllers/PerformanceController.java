@@ -3,28 +3,32 @@ package com.example.testmanagement.Controllers;
 import com.example.testmanagement.Entities.TestResult;
 import com.example.testmanagement.Services.PerformanceService;
 import com.example.testmanagement.Services.TestCaseService;
+import com.example.testmanagement.config.JenkinsConfig;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/performance")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ROLE_ADMIN','ROLE_TESTER')")
 public class PerformanceController {
     private final TestCaseService testCaseService;
     private final PerformanceService performanceExecutionService;
+    private final JenkinsConfig jenkinsConfig;
 
     /**
      * Exécute un test de performance
      * Utilise la configuration Jenkins depuis application.properties
      */
     @PostMapping("/{testCaseId}/run")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN','ROLE_TESTER')")
     public ResponseEntity<Map<String,Object>> runPerformance(
             @PathVariable Long testCaseId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -38,6 +42,7 @@ public class PerformanceController {
      * Exécute un test de performance avec des credentials Jenkins personnalisés
      */
     @PostMapping("/{testCaseId}/run/custom")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN','ROLE_TESTER')")
     public ResponseEntity<Map<String,Object>> runPerformanceWithCustomJenkins(
             @PathVariable Long testCaseId,
             @AuthenticationPrincipal UserDetails userDetails,
@@ -60,6 +65,7 @@ public class PerformanceController {
             @RequestHeader(name="X-JENKINS-TOKEN", required=true) String token,
             @RequestBody Map<String,Object> metrics) {
 
+        validateToken(token);
         performanceExecutionService.handleJenkinsCallback(testResultId, metrics);
         return ResponseEntity.ok().build();
     }
@@ -71,5 +77,12 @@ public class PerformanceController {
     public ResponseEntity<TestResult> getResult(@PathVariable Long testResultId) {
         TestResult result = performanceExecutionService.getTestResult(testResultId);
         return ResponseEntity.ok(result);
+    }
+
+    private void validateToken(String token) {
+        String expected = jenkinsConfig.getCallbackToken();
+        if (expected == null || !expected.equals(token)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid Jenkins callback token");
+        }
     }
 }

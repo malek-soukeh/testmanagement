@@ -36,6 +36,10 @@ public class TestResult {
     private String notes;
     private String testName;
     private String testType;
+    @Column(columnDefinition = "LONGTEXT")
+    private String executionReport;
+    @Column(columnDefinition = "TEXT")
+    private String artifactUrl;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "executed_by")

@@ -8,6 +8,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -42,6 +43,14 @@ public class TestResultService {
 
     public List<TestResult> getByProjectId(Long projectId) {
         return testResultRepository.findByProjectId(projectId);
+    }
+
+    public Optional<TestResult> getLatestForTestCase(Long testCaseId) {
+        return testResultRepository.findTopByTestCaseIdOrderByExecutedAtDesc(testCaseId);
+    }
+
+    public Optional<TestResult> findById(Long testResultId) {
+        return testResultRepository.findById(testResultId);
     }
 
 }
