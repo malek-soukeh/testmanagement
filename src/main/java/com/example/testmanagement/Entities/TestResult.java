@@ -21,12 +21,12 @@ public class TestResult {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "run_id")
-    @JsonIgnoreProperties({"testCase", "testResults", "createdBy"})
+    @JsonIgnoreProperties({"testCase", "testResults", "createdBy", "hibernateLazyInitializer", "handler"})
     private TestRun testRun;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "case_id")
-    @JsonIgnoreProperties({"testResults", "testCaseSteps", "testSuite", "createdBy"})
+    @JsonIgnoreProperties({"testResults", "testCaseSteps", "testSuite", "createdBy", "hibernateLazyInitializer", "handler"})
     private TestCase testCase;
 
     @Enumerated(EnumType.STRING)
