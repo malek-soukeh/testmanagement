@@ -1,6 +1,7 @@
 package com.example.testmanagement.seleniumrunner;
 
 import org.openqa.selenium.*;
+import org.openqa.selenium.InvalidElementStateException;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -196,8 +197,36 @@ public class StepExecutor {
                         throw new RuntimeException("Could not find input element with selector: " + target);
                     }
                     
-                    inputElement.clear();
-                    inputElement.sendKeys(value == null ? "" : value);
+                    String textToType = value == null ? "" : value;
+
+                    try {
+                        inputElement.clear();
+                    } catch (InvalidElementStateException clearEx) {
+                        // Some PrimeNG inputs are wrapped/readonly; fall back to JS clearing
+                        try {
+                            ((JavascriptExecutor) driver).executeScript(
+                                    "arguments[0].value=''; arguments[0].dispatchEvent(new Event('input', {bubbles:true}));",
+                                    inputElement);
+                        } catch (Exception jsClearEx) {
+                            System.out.println("    ! Unable to clear via JS: " + jsClearEx.getMessage());
+                        }
+                    }
+
+                    try {
+                        inputElement.sendKeys(textToType);
+                    } catch (InvalidElementStateException typeEx) {
+                        // Final fallback: set value by JS then dispatch events
+                        try {
+                            ((JavascriptExecutor) driver).executeScript(
+                                    "arguments[0].focus();" +
+                                    "arguments[0].value=arguments[1];" +
+                                    "arguments[0].dispatchEvent(new Event('input', {bubbles:true}));" +
+                                    "arguments[0].dispatchEvent(new Event('change', {bubbles:true}));",
+                                    inputElement, textToType);
+                        } catch (Exception jsTypeEx) {
+                            throw typeEx;
+                        }
+                    }
                     break;
 
                 case "selectbyvalue":
