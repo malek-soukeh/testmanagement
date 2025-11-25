@@ -18,13 +18,13 @@
                     <elementProp name="METHOD" elementType="Argument"><stringProp name="Argument.name">METHOD</stringProp><stringProp name="Argument.value">${__P(METHOD,GET)}</stringProp></elementProp>
                     <elementProp name="RESULT_FILE" elementType="Argument"><stringProp name="Argument.name">RESULT_FILE</stringProp><stringProp name="Argument.value">${__P(RESULT_FILE,results/result.jtl)}</stringProp></elementProp>
                     <elementProp name="TIMEOUT" elementType="Argument"><stringProp name="Argument.name">TIMEOUT</stringProp><stringProp name="Argument.value">${__P(TIMEOUT,5000)}</stringProp></elementProp>
-                    <elementProp name="REQUESTS_PER_SECOND" elementType="Argument"><stringProp name="Argument.name">REQUESTS_PER_SECOND</stringProp><stringProp name="Argument.value">${__P(REQUESTS_PER_SECOND,)}</stringProp></elementProp>
+                    <elementProp name="REQUESTS_PER_SECOND" elementType="Argument"><stringProp name="Argument.name">REQUESTS_PER_SECOND</stringProp><stringProp name="Argument.value">${__P(REQUESTS_PER_SECOND,1)}</stringProp></elementProp>
+                    <elementProp name="USE_DURATION" elementType="Argument"><stringProp name="Argument.name">USE_DURATION</stringProp><stringProp name="Argument.value">true</stringProp></elementProp>
                 </collectionProp>
             </elementProp>
             <stringProp name="TestPlan.user_define_classpath"/>
         </TestPlan>
         <hashTree>
-
             <!-- HTTP Request Defaults -->
             <ConfigTestElement guiclass="HttpDefaultsGui" testclass="ConfigTestElement" testname="HTTP Request Defaults" enabled="true">
                 <stringProp name="HTTPSampler.domain">${DOMAIN}</stringProp>
@@ -59,15 +59,14 @@
                 </elementProp>
                 <stringProp name="ThreadGroup.num_threads">${USERS}</stringProp>
                 <stringProp name="ThreadGroup.ramp_time">${RAMP_UP}</stringProp>
-                <boolProp name="ThreadGroup.scheduler">${__P(USE_DURATION,false)}</boolProp>
+                <boolProp name="ThreadGroup.scheduler">${USE_DURATION}</boolProp>
                 <stringProp name="ThreadGroup.duration">${DURATION}</stringProp>
             </ThreadGroup>
             <hashTree>
-
-                <!-- Constant Throughput Timer (si REQUESTS_PER_SECOND est défini) -->
+                <!-- Constant Throughput Timer -->
                 <ConstantThroughputTimer guiclass="TestBeanGUI" testclass="ConstantThroughputTimer" testname="Constant Throughput Timer" enabled="true">
                     <stringProp name="calcMode">0</stringProp>
-                    <doubleProp name="throughput">${__P(REQUESTS_PER_SECOND,0)}</doubleProp>
+                    <doubleProp name="throughput">${REQUESTS_PER_SECOND}</doubleProp>
                 </ConstantThroughputTimer>
                 <hashTree/>
 
@@ -85,7 +84,7 @@
                 </HTTPSamplerProxy>
                 <hashTree/>
 
-                <!-- Response Assertion (optionnel, param via ASSERT_CONTAINS) -->
+                <!-- Response Assertion -->
                 <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Response contains assertion" enabled="true">
                     <collectionProp name="Asserion.test_strings">
                         <stringProp name="0">${__P(ASSERT_CONTAINS,)}</stringProp>
@@ -104,7 +103,6 @@
                 <hashTree/>
 
             </hashTree>
-
         </hashTree>
     </hashTree>
 </jmeterTestPlan>
