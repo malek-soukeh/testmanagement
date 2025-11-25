@@ -90,13 +90,27 @@ pipeline {
             steps {
                 script {
                     def summaryContent = null
-                    if (env.SUMMARY_FILE?.trim()) {
+                    if (env.SUMMARY_FILE?.trim() && fileExists(env.SUMMARY_FILE)) {
                         summaryContent = readFile(env.SUMMARY_FILE)
+                    } else if (fileExists('/tmp/scenario.json')) {
+                        summaryContent = readFile('/tmp/scenario.json')
+                    } else {
+                        summaryContent = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson([
+                            title: params?.SCENARIO_JSON ? "Selenium Run" : "Automated Test",
+                            steps: [],
+                            overallPassed: (env.SELENIUM_STATUS ?: 'FAILED') == 'PASSED'
+                        ]))
                     }
+
+                    String artifactHref = "${env.BUILD_URL}artifact/target/selenium-runs/"
+                    if (env.SUMMARY_FILE?.trim()) {
+                        artifactHref = "${env.BUILD_URL}artifact/${env.SUMMARY_FILE}"
+                    }
+
                     def callbackPayload = [
                         status: env.SELENIUM_STATUS ?: 'FAILED',
                         summaryJson: summaryContent,
-                        artifactUrl: env.SUMMARY_FILE ? "${env.BUILD_URL}artifact/${env.SUMMARY_FILE}" : null
+                        artifactUrl: artifactHref
                     ]
                     def payloadJson = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(callbackPayload))
                     writeFile file: 'callback-payload.json', text: payloadJson

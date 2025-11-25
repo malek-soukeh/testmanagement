@@ -86,7 +86,8 @@ public class TestExecutionController {
     }
 
     private void validateToken(String token) {
-        String expected = jenkinsConfig.getCallbackToken();
+        String expected = jenkinsConfig.
+                getCallbackToken();
         if (expected == null || !expected.equals(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid Jenkins callback token");
         }
