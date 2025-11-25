@@ -73,3 +73,4 @@ chmod +x run-performance-test.sh
 
 **Tout est prêt ! Le pipeline est fonctionnel et prêt à être utilisé.** 🎉
 
+

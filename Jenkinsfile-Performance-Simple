@@ -91,17 +91,17 @@ try:
     requests_per_second = str(perf.get('requestsPerSecond', '')) if perf.get('requestsPerSecond') else ''
     
     # Paramètres supplémentaires
-    add_params = perf.get('additionalParams', {})
-    method = add_params.get('method', 'GET')
-    authorization = add_params.get('authorization', '')
-    content_type = add_params.get('contentType', 'application/json')
+    add_params = perf.get('additionalParams') or {}
+    method = perf.get('method') or add_params.get('method', 'GET')
+    authorization = perf.get('authorization') or add_params.get('authorization', '')
+    content_type = perf.get('contentType') or add_params.get('contentType', 'application/json')
     
     # Écrire les variables d'environnement dans un fichier
     with open('${WORKSPACE}/jenkins_env.sh', 'w') as f:
         f.write(f'export PROTOCOL={protocol}\\n')
         f.write(f'export DOMAIN={domain}\\n')
         f.write(f'export PORT={port}\\n')
-        f.write(f'export PATH={path}\\n')
+        f.write(f'export REQUEST_PATH={path}\\n')
         f.write(f'export USERS={users}\\n')
         f.write(f'export RAMP_UP={ramp_up}\\n')
         f.write(f'export DURATION={duration}\\n')
@@ -120,9 +120,9 @@ PYTHON_SCRIPT
                     
                     // Charger les variables d'environnement
                     sh '''
-                        source ${WORKSPACE}/jenkins_env.sh
+                        . "${WORKSPACE}/jenkins_env.sh"
                         echo "Paramètres extraits:"
-                        echo "  URL: $PROTOCOL://$DOMAIN${PORT:+:$PORT}$PATH"
+                        echo "  URL: $PROTOCOL://$DOMAIN${PORT:+:$PORT}$REQUEST_PATH"
                         echo "  Users: $USERS"
                         echo "  Ramp-up: ${RAMP_UP}s"
                         echo "  Duration: ${DURATION}s"
@@ -145,7 +145,7 @@ PYTHON_SCRIPT
                     echo '🚀 Exécution du test JMeter...'
                     
                     sh '''
-                        source ${WORKSPACE}/jenkins_env.sh
+                        . "${WORKSPACE}/jenkins_env.sh"
                         
                         RESULT_FILE="${RESULTS_DIR}/result_${BUILD_NUMBER}.jtl"
                         
@@ -156,12 +156,12 @@ PYTHON_SCRIPT
                         echo "  PROTOCOL=$PROTOCOL"
                         echo "  DOMAIN=$DOMAIN"
                         echo "  PORT=$PORT"
-                        echo "  PATH=$PATH"
+                        echo "  REQUEST_PATH=$REQUEST_PATH"
                         echo "  METHOD=$METHOD"
                         echo "  TIMEOUT=$TIMEOUT"
                         echo ""
                         
-                        jmeter -n -t template.xml \\
+                        /opt/jmeter/bin/jmeter -n -t template.xml \\
                             -JUSERS=$USERS \\
                             -JRAMP_UP=$RAMP_UP \\
                             -JDURATION=$DURATION \\
@@ -169,7 +169,7 @@ PYTHON_SCRIPT
                             -JPROTOCOL=$PROTOCOL \\
                             -JDOMAIN=$DOMAIN \\
                             -JPORT=$PORT \\
-                            -JPATH=$PATH \\
+                            -JPATH=$REQUEST_PATH \\
                             -JMETHOD=$METHOD \\
                             -JAUTHORIZATION="$AUTHORIZATION" \\
                             -JCONTENT_TYPE=$CONTENT_TYPE \\
@@ -184,7 +184,7 @@ PYTHON_SCRIPT
                         fi
                         echo "✅ Fichier de résultats créé: $RESULT_FILE"
                         ls -lh $RESULT_FILE
-                    """
+                    '''
                 }
             }
         }
@@ -195,7 +195,7 @@ PYTHON_SCRIPT
                     echo '📊 Génération du rapport HTML...'
                     
                     sh """
-                        source ${WORKSPACE}/jenkins_env.sh
+                        . "${WORKSPACE}/jenkins_env.sh"
                         RESULT_FILE="${RESULTS_DIR}/result_${BUILD_NUMBER}.jtl"
                         REPORT_DIR="${REPORTS_DIR}/report_${BUILD_NUMBER}"
                         
@@ -220,7 +220,7 @@ PYTHON_SCRIPT
                     echo '📤 Parsing des résultats et envoi du callback...'
                     
                     sh """
-                        source ${WORKSPACE}/jenkins_env.sh
+                        . "${WORKSPACE}/jenkins_env.sh"
                         export RESULT_FILE="${RESULTS_DIR}/result_${BUILD_NUMBER}.jtl"
                         export TEST_RESULT_ID="${params.TEST_RESULT_ID}"
                         export BACKEND_URL="${BACKEND_URL}"

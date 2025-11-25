@@ -234,9 +234,9 @@ public class PerformanceService {
                 perfConfig.put("requestsPerSecond", configDTO.getRequestsPerSecond());
                 perfConfig.put("timeoutMs", configDTO.getTimeoutMs());
                 
-                // Ajouter les paramètres supplémentaires
-                if (configDTO.getAdditionalParams() != null) {
-                    perfConfig.putAll(configDTO.getAdditionalParams());
+                // Ajouter les paramètres supplémentaires (nested map)
+                if (configDTO.getAdditionalParams() != null && !configDTO.getAdditionalParams().isEmpty()) {
+                    perfConfig.put("additionalParams", configDTO.getAdditionalParams());
                 }
             } catch (Exception e) {
                 // Si le parsing échoue, essayer de parser directement en Map

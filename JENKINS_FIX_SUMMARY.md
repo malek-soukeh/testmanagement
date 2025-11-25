@@ -73,3 +73,4 @@ jmeter -v          # Doit être installé
 
 Le pipeline devrait maintenant fonctionner sans erreur ! 🎉
 
+

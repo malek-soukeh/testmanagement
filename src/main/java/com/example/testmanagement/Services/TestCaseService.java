@@ -99,7 +99,7 @@ public class TestCaseService {
 
     @Transactional(readOnly = true)
     public TestCase getTestCaseById(Long id) {
-        return testCaseRepository.findById(id)
+        return testCaseRepository.findByIdWithSteps(id)
                 .orElseThrow(() -> new RuntimeException("Test case not found with id: " + id));
     }
 
@@ -262,14 +262,18 @@ public class TestCaseService {
         scenario.put("testCaseId", testCase.getId());
         scenario.put("title", testCase.getTitle());
         scenario.put("url", testCase.getTestUrl());
+        scenario.put("testType", testCase.getTestType() != null ? testCase.getTestType().name() : TestCase.TestType.MANUAL.name());
 
-        List<Map<String, Object>> steps = testCase.getTestCaseSteps().stream().map(step -> {
+        List<Map<String, Object>> steps = testCaseStepRepository.findByTestCaseIdOrderByIdAsc(testCase.getId())
+                .stream()
+                .map(step -> {
             Map<String, Object> map = new HashMap<>();
             map.put("stepName", step.getStepName());
             map.put("actionType", step.getActionType());
             map.put("actionTarget", step.getActionTarget());
             map.put("actionValue", step.getActionValue());
             map.put("expectedResult", step.getExpectedResult());
+                    map.put("selectorType", inferSelectorType(step.getActionTarget()));
             return map;
         }).collect(Collectors.toList());
         scenario.put("steps", steps);
@@ -280,6 +284,20 @@ public class TestCaseService {
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Failed to build scenario JSON", e);
         }
+    }
+
+    private String inferSelectorType(String actionTarget) {
+        if (actionTarget == null || actionTarget.isBlank()) {
+            return "css";
+        }
+        String trimmed = actionTarget.trim();
+        if (trimmed.startsWith("//") || trimmed.startsWith("./") || trimmed.startsWith("(")) {
+            return "xpath";
+        }
+        if (trimmed.contains("@") || (trimmed.contains("[") && trimmed.contains("]"))) {
+            return "xpath";
+        }
+        return "css";
     }
 
 

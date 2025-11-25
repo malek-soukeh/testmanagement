@@ -93,3 +93,4 @@ Si vous préférez utiliser `Jenkinsfile-Performance` avec les plugins :
 
 Mais **`Jenkinsfile-Performance-Simple` est recommandé** car il ne nécessite aucun plugin supplémentaire.
 
+
