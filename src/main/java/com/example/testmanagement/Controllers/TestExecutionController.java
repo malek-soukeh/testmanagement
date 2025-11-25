@@ -4,6 +4,7 @@ import com.example.testmanagement.Entities.TestResult;
 import com.example.testmanagement.Requests.SeleniumCallbackRequest;
 import com.example.testmanagement.Services.SeleniumExecutionService;
 import com.example.testmanagement.Services.TestCaseService;
+import com.example.testmanagement.Services.TestReportService;
 import com.example.testmanagement.Services.TestResultService;
 import com.example.testmanagement.config.JenkinsConfig;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class TestExecutionController {
     private final TestCaseService testCaseService;
     private final SeleniumExecutionService seleniumExecutionService;
     private final TestResultService testResultService;
+    private final TestReportService testReportService;
     private final JenkinsConfig jenkinsConfig;
 
     @PostMapping("/{testCaseId}/run")
@@ -82,6 +84,17 @@ public class TestExecutionController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"selenium-report-" + testResultId + ".json\"")
                 .contentLength(data.length)
                 .contentType(MediaType.APPLICATION_JSON)
+                .body(resource);
+    }
+
+    @GetMapping("/results/{testResultId}/report/pdf")
+    public ResponseEntity<ByteArrayResource> downloadReportPdf(@PathVariable Long testResultId) {
+        byte[] pdf = testReportService.buildSeleniumPdf(testResultId);
+        ByteArrayResource resource = new ByteArrayResource(pdf);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"selenium-report-" + testResultId + ".pdf\"")
+                .contentLength(pdf.length)
+                .contentType(MediaType.APPLICATION_PDF)
                 .body(resource);
     }
 
