@@ -21,10 +21,12 @@ public class TestResult {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "run_id")
+    @JsonIgnoreProperties({"testCase", "testResults", "createdBy"})
     private TestRun testRun;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "case_id")
+    @JsonIgnoreProperties({"testResults", "testCaseSteps", "testSuite", "createdBy"})
     private TestCase testCase;
 
     @Enumerated(EnumType.STRING)
