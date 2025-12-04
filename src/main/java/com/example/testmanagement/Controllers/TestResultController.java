@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+
 @Slf4j
 @RestController
 @RequestMapping("/api/test-results")
@@ -22,18 +23,17 @@ public class TestResultController {
     }
 
     @PostMapping
-    public ResponseEntity saveResult(@RequestBody TestResultDTO dto) {
+    public ResponseEntity<TestResult> saveResult(@RequestBody TestResultDTO dto) {
 
         log.info("📩 Requête reçue: {}", dto);
         TestResult saved = service.saveFromDto(dto);
-        return ResponseEntity.ok(saved);    }
+        return ResponseEntity.ok(saved);
+    }
 
     @GetMapping("/project/{projectId}")
     public ResponseEntity<List<TestResult>> getResultsByProject(@PathVariable Long projectId) {
         List<TestResult> results = service.getByProjectId(projectId);
         return ResponseEntity.ok(results);
     }
-
-
 
 }

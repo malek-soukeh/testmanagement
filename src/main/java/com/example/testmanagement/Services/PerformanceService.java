@@ -93,6 +93,7 @@ public class PerformanceService {
         result.setTestType(TestCase.TestType.PERFORMANCE.name());
         result.setStatus(TestResult.ResultStatus.RUNNING);
         result.setTestRun(run);
+        result.setTestCase(testCase);
         result.setExecutedBy(user);
         result.setExecutedAt(LocalDateTime.now());
         testResultRepo.save(result);
