@@ -14,7 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
 
-@Service @Transactional @RequiredArgsConstructor
+@Service
+@Transactional
+@RequiredArgsConstructor
 public class UserService {
 
     private final UserRepository userRepository;
@@ -78,18 +80,24 @@ public class UserService {
         userRepository.deleteById(id);
     }
 
+    public void toggleUserAccess(Long id, boolean enabled) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setEnabled(enabled);
+        userRepository.save(user);
+    }
+
     private UserResponse mapToResponse(User user) {
         UserResponse res = new UserResponse();
         res.setId(user.getId());
         res.setFirstName(user.getFirstName());
         res.setLastName(user.getLastName());
         res.setEmail(user.getEmail());
+        res.setEnabled(user.isEnabled());
         res.setRoles(user.getRoles().stream()
                 .map(Role::getName)
                 .collect(Collectors.toSet()));
         return res;
     }
 
-
 }
-

@@ -1,6 +1,5 @@
 package com.example.testmanagement.Controllers;
 
-
 import com.example.testmanagement.Requests.UserRequest;
 import com.example.testmanagement.Responses.UserResponse;
 import com.example.testmanagement.Services.UserService;
@@ -17,7 +16,6 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
-
 
     @GetMapping
     public List<UserResponse> getAllUsers() {
@@ -37,5 +35,23 @@ public class UserController {
     @DeleteMapping("/{id}")
     public void deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
+    }
+
+    @PatchMapping("/{id}/toggle-access")
+    public void toggleUserAccess(@PathVariable Long id, @RequestBody ToggleAccessRequest request) {
+        userService.toggleUserAccess(id, request.isEnabled());
+    }
+
+    // Inner class for request body
+    public static class ToggleAccessRequest {
+        private boolean enabled;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
     }
 }

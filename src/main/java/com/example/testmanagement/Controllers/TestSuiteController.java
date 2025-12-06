@@ -1,6 +1,5 @@
 package com.example.testmanagement.Controllers;
 
-
 import com.example.testmanagement.Entities.TestSuite;
 import com.example.testmanagement.Services.TestSuiteService;
 import org.springframework.http.ResponseEntity;
@@ -25,16 +24,14 @@ public class TestSuiteController {
 
     @PostMapping
     public ResponseEntity<TestSuite> createSuite(@PathVariable Long projectId,
-                                                 @RequestBody TestSuite suite,
-                                                 @AuthenticationPrincipal UserDetails userDetails) {
+            @RequestBody TestSuite suite,
+            @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(
-                testSuiteService.createTestSuite(projectId, suite, userDetails.getUsername())
-        );
+                testSuiteService.createTestSuite(projectId, suite, userDetails.getUsername()));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Optional<TestSuite>> getTestSuite(@PathVariable Long id)
-    {
+    public ResponseEntity<Optional<TestSuite>> getTestSuite(@PathVariable Long id) {
         return ResponseEntity.ok(testSuiteService.getTestSuite(id));
     }
 
@@ -45,16 +42,21 @@ public class TestSuiteController {
 
     @PutMapping("/{Id}")
     public ResponseEntity<TestSuite> updateSuite(@PathVariable Long Id,
-                                                 @RequestBody TestSuite suiteDetails,
-                                                 @AuthenticationPrincipal UserDetails userDetails)
-    {
+            @RequestBody TestSuite suiteDetails,
+            @AuthenticationPrincipal UserDetails userDetails) {
         TestSuite updatedSuite = testSuiteService.updateTestSuite(Id, suiteDetails, userDetails.getUsername());
         return ResponseEntity.ok(updatedSuite);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTestSuite(@PathVariable Long id, @AuthenticationPrincipal UserDetails userDetails) {
-        testSuiteService.deleteTestSuite(id, userDetails.getUsername());
-        return ResponseEntity.noContent().build();
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN','ROLE_TESTER')")
+    public ResponseEntity<Void> deleteTestSuite(@PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            testSuiteService.deleteTestSuite(id, userDetails.getUsername());
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(403).build();
+        }
     }
 }

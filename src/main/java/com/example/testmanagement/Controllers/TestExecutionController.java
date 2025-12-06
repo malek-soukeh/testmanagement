@@ -44,8 +44,25 @@ public class TestExecutionController {
         Long userId = testCaseService.getUserIdByUsername(userDetails.getUsername());
 
         Map<String, Object> response = testCaseService.triggerAutomatedTest(
-                testCaseId, userId, jenkinsJobUrl, jenkinsUser, jenkinsToken
-        );
+                testCaseId, userId, jenkinsJobUrl, jenkinsUser, jenkinsToken);
+
+        return ResponseEntity.accepted().body(response);
+    }
+
+    @PostMapping("/suite/{suiteId}/run")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN','ROLE_TESTER')")
+    public ResponseEntity<Map<String, Object>> runTestSuite(
+            @PathVariable Long suiteId,
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam(required = false) String seleniumJobUrl,
+            @RequestParam(required = false) String performanceJobUrl,
+            @RequestParam String jenkinsUser,
+            @RequestParam String jenkinsToken) {
+
+        Long userId = testCaseService.getUserIdByUsername(userDetails.getUsername());
+
+        Map<String, Object> response = testCaseService.executeTestSuite(
+                suiteId, userId, seleniumJobUrl, performanceJobUrl, jenkinsUser, jenkinsToken);
 
         return ResponseEntity.accepted().body(response);
     }
@@ -81,7 +98,8 @@ public class TestExecutionController {
         ByteArrayResource resource = new ByteArrayResource(data);
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"selenium-report-" + testResultId + ".json\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"selenium-report-" + testResultId + ".json\"")
                 .contentLength(data.length)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(resource);
@@ -92,15 +110,15 @@ public class TestExecutionController {
         byte[] pdf = testReportService.buildSeleniumPdf(testResultId);
         ByteArrayResource resource = new ByteArrayResource(pdf);
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"selenium-report-" + testResultId + ".pdf\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"selenium-report-" + testResultId + ".pdf\"")
                 .contentLength(pdf.length)
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(resource);
     }
 
     private void validateToken(String token) {
-        String expected = jenkinsConfig.
-                getCallbackToken();
+        String expected = jenkinsConfig.getCallbackToken();
         if (expected == null || !expected.equals(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid Jenkins callback token");
         }

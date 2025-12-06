@@ -1,9 +1,11 @@
 package com.example.testmanagement.Services;
 
 import com.example.testmanagement.Entities.Project;
+import com.example.testmanagement.Entities.TestCase;
 import com.example.testmanagement.Entities.TestSuite;
 import com.example.testmanagement.Entities.User;
 import com.example.testmanagement.Repository.ProjectRepository;
+import com.example.testmanagement.Repository.TestCaseRepository;
 import com.example.testmanagement.Repository.TestSuiteRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,18 +14,21 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-@Service @Transactional
+@Service
+@Transactional
 public class TestSuiteService {
 
     private final TestSuiteRepository testSuiteRepository;
     private final ProjectRepository projectRepository;
     private final UserService userService;
+    private final TestCaseRepository testCaseRepository;
 
-
-    public TestSuiteService(TestSuiteRepository testSuiteRepository, ProjectRepository projectRepository, UserService userService) {
+    public TestSuiteService(TestSuiteRepository testSuiteRepository, ProjectRepository projectRepository,
+            UserService userService, TestCaseRepository testCaseRepository) {
         this.testSuiteRepository = testSuiteRepository;
         this.projectRepository = projectRepository;
         this.userService = userService;
+        this.testCaseRepository = testCaseRepository;
     }
 
     public TestSuite createTestSuite(Long projectId, TestSuite suite, String username) {
@@ -47,6 +52,7 @@ public class TestSuiteService {
 
         return testSuiteRepository.findByProject(project);
     }
+
     public TestSuite updateTestSuite(Long suiteId, TestSuite suiteDetails, String username) {
         TestSuite suite = testSuiteRepository.findById(suiteId)
                 .orElseThrow(() -> new RuntimeException("Test Suite not found with id: " + suiteId));
@@ -80,9 +86,16 @@ public class TestSuiteService {
         User user = userService.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (!suite.getCreatedBy().getId().equals(user.getId())) {
+        boolean isAdmin = user.getRoles().stream().anyMatch(role -> role.getName().equals("ROLE_ADMIN"));
+
+        if (!isAdmin && !suite.getCreatedBy().getId().equals(user.getId())) {
             throw new RuntimeException("You can only delete your own test suites");
         }
+
+        // Manually delete all test cases associated with this test suite
+        // to avoid foreign key constraint violations
+        List<TestCase> testCases = testCaseRepository.findAllByTestSuiteId(suiteId);
+        testCaseRepository.deleteAll(testCases);
 
         testSuiteRepository.delete(suite);
     }

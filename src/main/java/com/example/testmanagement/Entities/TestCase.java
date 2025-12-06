@@ -17,11 +17,20 @@ import java.util.List;
 @Table(name = "test_cases")
 public class TestCase {
 
-    public enum TestType { MANUAL, AUTOMATED, PERFORMANCE }
-    public enum Priority { LOW, MEDIUM, HIGH, CRITICAL }
-    public enum Status { PASSED,DRAFT, READY, RUNNING , FAILED }
+    public enum TestType {
+        MANUAL, AUTOMATED, PERFORMANCE
+    }
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    public enum Priority {
+        LOW, MEDIUM, HIGH, CRITICAL
+    }
+
+    public enum Status {
+        PASSED, DRAFT, READY, RUNNING, FAILED
+    }
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @NotBlank(message = "Title is required")
@@ -30,7 +39,6 @@ public class TestCase {
 
     @Column(columnDefinition = "TEXT")
     private String description;
-
 
     @Column(columnDefinition = "TEXT")
     private String precondition;
@@ -51,26 +59,28 @@ public class TestCase {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "password", "role"})
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler", "password", "role" })
     private User createdBy;
 
     @OneToMany(fetch = FetchType.LAZY)
     @JoinColumn(name = "test_case_id")
-    @JsonIgnoreProperties({"testCaseSteps"})
+    @JsonIgnoreProperties({ "testCaseSteps" })
     private List<TestCaseStep> testCaseSteps;
 
     private LocalDateTime createdAt = LocalDateTime.now();
     private LocalDateTime updatedAt;
-    private String testUrl ;
+    private String testUrl;
 
     @OneToMany(mappedBy = "testCase", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TestResult> testResults = new ArrayList<>();
 
-   // private String testTypePerf ;
+    @OneToMany(mappedBy = "testCase", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<TestRun> testRuns = new ArrayList<>();
+
+    // private String testTypePerf ;
     // private String nbUsers ;
 
     @Column(columnDefinition = "TEXT")
     private String performanceConfig; // JSON string
-
 
 }

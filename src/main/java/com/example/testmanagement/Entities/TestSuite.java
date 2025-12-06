@@ -15,7 +15,8 @@ import java.util.*;
 @Table(name = "test_suites")
 public class TestSuite {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String suiteName;
@@ -23,22 +24,18 @@ public class TestSuite {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id")
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "testSuites"})
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler", "testSuites" })
     private Project project;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "password", "role"})
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler", "password", "role" })
     private User createdBy;
 
     private LocalDateTime createdAt = LocalDateTime.now();
     private LocalDateTime updatedAt;
 
-    @ManyToMany
-    @JoinTable(
-            name = "test_suite_cases",
-            joinColumns = @JoinColumn(name = "suite_id"),
-            inverseJoinColumns = @JoinColumn(name = "case_id")
-    )
+    @ManyToMany(cascade = CascadeType.ALL)
+    @JoinTable(name = "test_suite_cases", joinColumns = @JoinColumn(name = "suite_id"), inverseJoinColumns = @JoinColumn(name = "case_id"))
     private List<TestCase> testCases = new ArrayList<>();
 }

@@ -44,19 +44,20 @@ public class PerformanceService {
      * Déclenche un test de performance via Jenkins
      * Utilise la configuration Jenkins depuis application.properties
      */
-    public Map<String,Object> triggerPerformanceTest(Long testCaseId, Long userId) {
-        return triggerPerformanceTest(testCaseId, userId, 
-            jenkinsConfig.getJobUrl(), 
-            jenkinsConfig.getUser(), 
-            jenkinsConfig.getToken());
+    public Map<String, Object> triggerPerformanceTest(Long testCaseId, Long userId) {
+        return triggerPerformanceTest(testCaseId, userId,
+                jenkinsConfig.getJobUrl(),
+                jenkinsConfig.getUser(),
+                jenkinsConfig.getToken());
     }
 
     /**
-     * Déclenche un test de performance via Jenkins avec des credentials personnalisés
+     * Déclenche un test de performance via Jenkins avec des credentials
+     * personnalisés
      */
-    public Map<String,Object> triggerPerformanceTest(Long testCaseId, Long userId,
-                                                     String jenkinsJobUrl, String jenkinsUser,
-                                                     String jenkinsToken) {
+    public Map<String, Object> triggerPerformanceTest(Long testCaseId, Long userId,
+            String jenkinsJobUrl, String jenkinsUser,
+            String jenkinsToken) {
 
         TestCase testCase = testCaseRepo.findById(testCaseId)
                 .orElseThrow(() -> new RuntimeException("TestCase not found"));
@@ -102,7 +103,7 @@ public class PerformanceService {
         testRunRepo.save(run);
 
         // Construire le scénario JSON pour Jenkins
-        Map<String,Object> scenario = buildPerformanceScenario(testCase);
+        Map<String, Object> scenario = buildPerformanceScenario(testCase);
 
         // Préparer l'appel Jenkins
         String scenarioJson;
@@ -123,7 +124,7 @@ public class PerformanceService {
                 HttpHeaders headers = new HttpHeaders();
                 headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
                 headers.setBasicAuth(jenkinsUser, jenkinsToken);
-                
+
                 // Ajouter le CSRF token si disponible
                 if (jenkinsCrumb != null && !jenkinsCrumb.isEmpty()) {
                     headers.add("Jenkins-Crumb", jenkinsCrumb);
@@ -138,7 +139,8 @@ public class PerformanceService {
             } catch (Exception e) {
                 // Si l'appel avec form data échoue, essayer avec les paramètres dans l'URL
                 System.err.println("Form data approach failed, trying URL parameters: " + e.getMessage());
-                resp = triggerJenkinsWithUrlParams(jenkinsJobUrl, scenarioJson, result.getId().toString(), jenkinsUser, jenkinsToken);
+                resp = triggerJenkinsWithUrlParams(jenkinsJobUrl, scenarioJson, result.getId().toString(), jenkinsUser,
+                        jenkinsToken);
             }
         } catch (RuntimeException ex) {
             markExecutionFailure(testCase, run, result);
@@ -156,7 +158,7 @@ public class PerformanceService {
             testRunRepo.save(run);
         }
 
-        Map<String,Object> response = new HashMap<>();
+        Map<String, Object> response = new HashMap<>();
         response.put("runId", run.getId());
         response.put("testResultId", result.getId());
         response.put("status", run.getStatus());
@@ -164,7 +166,7 @@ public class PerformanceService {
         return response;
     }
 
-    public void handleJenkinsCallback(Long testResultId, Map<String,Object> metrics) {
+    public void handleJenkinsCallback(Long testResultId, Map<String, Object> metrics) {
         TestResult result = testResultRepo.findById(testResultId)
                 .orElseThrow(() -> new RuntimeException("TestResult not found"));
 
@@ -181,14 +183,35 @@ public class PerformanceService {
         result.setP95ResponseTimeMs(p95);
         result.setErrorRatePercent(errRate);
         result.setJmeterReportUrl(jmeterReportUrl);
-        result.setStatus("PASSED".equalsIgnoreCase(status) ? TestResult.ResultStatus.PASSED : TestResult.ResultStatus.FAILED);
+        result.setStatus(
+                "PASSED".equalsIgnoreCase(status) ? TestResult.ResultStatus.PASSED : TestResult.ResultStatus.FAILED);
+
+        // Save detailed execution report if available
+        if (metrics.containsKey("summaryJson")) {
+            System.out.println("Received summaryJson in callback for TestResult " + testResultId);
+            Object summaryObj = metrics.get("summaryJson");
+            if (summaryObj instanceof String) {
+                result.setExecutionReport((String) summaryObj);
+            } else {
+                try {
+                    result.setExecutionReport(objectMapper.writeValueAsString(summaryObj));
+                } catch (JsonProcessingException e) {
+                    System.err.println("Failed to serialize summaryJson: " + e.getMessage());
+                }
+            }
+        } else {
+            System.out.println("No summaryJson found in callback metrics for TestResult " + testResultId);
+            System.out.println("Available keys: " + metrics.keySet());
+        }
+
         testResultRepo.save(result);
 
         // update run
         TestRun run = result.getTestRun();
         if (run != null) {
             run.setCompletedAt(LocalDateTime.now());
-            run.setStatus(result.getStatus() == TestResult.ResultStatus.PASSED ? TestRun.RunStatus.PASSED : TestRun.RunStatus.FAILED);
+            run.setStatus(result.getStatus() == TestResult.ResultStatus.PASSED ? TestRun.RunStatus.PASSED
+                    : TestRun.RunStatus.FAILED);
             testRunRepo.save(run);
         }
 
@@ -217,16 +240,15 @@ public class PerformanceService {
         scenario.put("testCaseId", testCase.getId());
         scenario.put("title", testCase.getTitle());
         scenario.put("url", testCase.getTestUrl());
-        
+
         // Parser performanceConfig depuis JSON
         Map<String, Object> perfConfig = new HashMap<>();
         if (testCase.getPerformanceConfig() != null && !testCase.getPerformanceConfig().isEmpty()) {
             try {
                 PerformanceConfigDTO configDTO = objectMapper.readValue(
-                    testCase.getPerformanceConfig(), 
-                    PerformanceConfigDTO.class
-                );
-                
+                        testCase.getPerformanceConfig(),
+                        PerformanceConfigDTO.class);
+
                 // Convertir le DTO en Map pour le scénario
                 perfConfig.put("testType", configDTO.getTestType());
                 perfConfig.put("numberOfUsers", configDTO.getNumberOfUsers());
@@ -234,7 +256,7 @@ public class PerformanceService {
                 perfConfig.put("rampUpSeconds", configDTO.getRampUpSeconds());
                 perfConfig.put("requestsPerSecond", configDTO.getRequestsPerSecond());
                 perfConfig.put("timeoutMs", configDTO.getTimeoutMs());
-                
+
                 // Ajouter les paramètres supplémentaires (nested map)
                 if (configDTO.getAdditionalParams() != null && !configDTO.getAdditionalParams().isEmpty()) {
                     perfConfig.put("additionalParams", configDTO.getAdditionalParams());
@@ -243,15 +265,15 @@ public class PerformanceService {
                 // Si le parsing échoue, essayer de parser directement en Map
                 try {
                     perfConfig = objectMapper.readValue(
-                        testCase.getPerformanceConfig(), 
-                        new TypeReference<Map<String, Object>>(){}
-                    );
+                            testCase.getPerformanceConfig(),
+                            new TypeReference<Map<String, Object>>() {
+                            });
                 } catch (Exception ex) {
                     throw new RuntimeException("Failed to parse performance config", ex);
                 }
             }
         }
-        
+
         scenario.put("performance", perfConfig);
         return scenario;
     }
@@ -262,16 +284,17 @@ public class PerformanceService {
     private String getJenkinsCrumb(String jenkinsJobUrl, String jenkinsUser, String jenkinsToken) {
         try {
             // Extraire l'URL de base de Jenkins depuis jenkinsJobUrl
-            // Ex: http://10.0.0.15:8080/job/JmeterTest/buildWithParameters -> http://10.0.0.15:8080
+            // Ex: http://10.0.0.15:8080/job/JmeterTest/buildWithParameters ->
+            // http://10.0.0.15:8080
             String baseUrl = jenkinsJobUrl.substring(0, jenkinsJobUrl.indexOf("/job/"));
             String crumbUrl = baseUrl + "/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,\":\",//crumb)";
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setBasicAuth(jenkinsUser, jenkinsToken);
             HttpEntity<String> request = new HttpEntity<>(headers);
-            
+
             ResponseEntity<String> response = restTemplate.exchange(crumbUrl, HttpMethod.GET, request, String.class);
-            
+
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 // Format: "Jenkins-Crumb:abc123def456"
                 String crumb = response.getBody().trim();
@@ -281,32 +304,34 @@ public class PerformanceService {
                 return crumb;
             }
         } catch (Exception e) {
-            // Si la récupération du crumb échoue, on continue sans (certains Jenkins n'en ont pas besoin)
+            // Si la récupération du crumb échoue, on continue sans (certains Jenkins n'en
+            // ont pas besoin)
             System.err.println("Warning: Could not retrieve Jenkins Crumb: " + e.getMessage());
         }
         return null;
     }
-    
+
     /**
      * Méthode alternative : déclencher Jenkins avec les paramètres dans l'URL
      */
-    private ResponseEntity<String> triggerJenkinsWithUrlParams(String jenkinsJobUrl, String scenarioJson, 
-                                                                String testResultId, String jenkinsUser, 
-                                                                String jenkinsToken) {
+    private ResponseEntity<String> triggerJenkinsWithUrlParams(String jenkinsJobUrl, String scenarioJson,
+            String testResultId, String jenkinsUser,
+            String jenkinsToken) {
         try {
             // Encoder le JSON pour l'URL
             String encodedJson = java.net.URLEncoder.encode(scenarioJson, java.nio.charset.StandardCharsets.UTF_8);
-            String encodedTestResultId = java.net.URLEncoder.encode(testResultId, java.nio.charset.StandardCharsets.UTF_8);
-            
+            String encodedTestResultId = java.net.URLEncoder.encode(testResultId,
+                    java.nio.charset.StandardCharsets.UTF_8);
+
             // Construire l'URL avec les paramètres
-            String urlWithParams = jenkinsJobUrl + 
-                "?SCENARIO_JSON=" + encodedJson + 
-                "&TEST_RESULT_ID=" + encodedTestResultId;
-            
+            String urlWithParams = jenkinsJobUrl +
+                    "?SCENARIO_JSON=" + encodedJson +
+                    "&TEST_RESULT_ID=" + encodedTestResultId;
+
             HttpHeaders headers = new HttpHeaders();
             headers.setBasicAuth(jenkinsUser, jenkinsToken);
             HttpEntity<String> request = new HttpEntity<>(headers);
-            
+
             return restTemplate.postForEntity(urlWithParams, request, String.class);
         } catch (Exception e) {
             throw new RuntimeException("Failed to trigger Jenkins job with URL parameters", e);
@@ -314,7 +339,8 @@ public class PerformanceService {
     }
 
     private Double toDouble(Object o) {
-        if (o == null) return null;
+        if (o == null)
+            return null;
         try {
             return Double.valueOf(String.valueOf(o));
         } catch (Exception e) {

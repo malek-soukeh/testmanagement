@@ -24,7 +24,8 @@ public class ProjectController {
     }
 
     @PostMapping
-    public ResponseEntity<Project> createProject(@RequestBody Project project, @AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<Project> createProject(@RequestBody Project project,
+            @AuthenticationPrincipal UserDetails userDetails) {
         Project createdProject = projectService.createProject(project, userDetails.getUsername());
         return ResponseEntity.ok(createdProject);
     }
@@ -42,16 +43,22 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProject(@PathVariable Long id , @AuthenticationPrincipal UserDetails userDetails) {
-        projectService.deleteProject(id, userDetails.getUsername());
-        return ResponseEntity.noContent().build();
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN','ROLE_TESTER')")
+    public ResponseEntity<Void> deleteProject(@PathVariable Long id, @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            projectService.deleteProject(id, userDetails.getUsername());
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(403).build();
+        }
     }
+
     @PutMapping("/{id}")
     public ResponseEntity<Project> updateProject(
             @PathVariable Long id,
             @RequestBody Project projectDetails,
             @AuthenticationPrincipal UserDetails userDetails) {
-        Project updatedProject = projectService.updateProject(id , projectDetails, userDetails.getUsername());
+        Project updatedProject = projectService.updateProject(id, projectDetails, userDetails.getUsername());
         return ResponseEntity.ok(updatedProject);
     }
 
@@ -59,6 +66,12 @@ public class ProjectController {
     public ResponseEntity<Map<String, Object>> getProjectStatistics(@PathVariable Long projectId) {
         Map<String, Object> stats = projectService.getProjectStatistics(projectId);
         return ResponseEntity.ok(stats);
+    }
+
+    @GetMapping("/portfolio-statistics")
+    public ResponseEntity<Map<String, Object>> getPortfolioStatistics(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(projectService.getPortfolioStatistics(userDetails.getUsername()));
     }
 
 }

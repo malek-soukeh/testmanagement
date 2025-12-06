@@ -22,18 +22,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-@Service @Transactional @RequiredArgsConstructor
+@Service
+@Transactional
+@RequiredArgsConstructor
 public class TestCaseService {
     private final TestSuiteRepository testSuiteRepository;
     private final TestCaseRepository testCaseRepository;
     private final UserRepository userRepository;
     private final TestCaseStepRepository testCaseStepRepository;
     private final SeleniumExecutionService seleniumExecutionService;
-    public TestCase createTestCase(CreateTestCaseRequest request, String username,Long testSuiteId) {
+
+    public TestCase createTestCase(CreateTestCaseRequest request, String username, Long testSuiteId) {
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new RuntimeException("User not found: " + username));
 
-        TestSuite testSuite = testSuiteRepository.findById(testSuiteId).orElseThrow(() -> new RuntimeException("Test Suite not found: " + testSuiteId));
+        TestSuite testSuite = testSuiteRepository.findById(testSuiteId)
+                .orElseThrow(() -> new RuntimeException("Test Suite not found: " + testSuiteId));
 
         TestCase testCase = new TestCase();
         testCase.setTitle(request.getTitle());
@@ -46,13 +50,14 @@ public class TestCaseService {
         testCase.setTestSuite(testSuite);
         testCase.setCreatedAt(LocalDateTime.now());
 
-        // Pour les tests de performance : pas de steps, seulement testUrl et performanceConfig
+        // Pour les tests de performance : pas de steps, seulement testUrl et
+        // performanceConfig
         if (request.getTestType() == TestCase.TestType.PERFORMANCE) {
             if (request.getTestUrl() == null || request.getTestUrl().isEmpty()) {
                 throw new RuntimeException("testUrl is required for PERFORMANCE test cases");
             }
             testCase.setTestUrl(request.getTestUrl());
-            
+
             // Sérialiser performanceConfig en JSON
             if (request.getPerformanceConfig() != null) {
                 try {
@@ -69,22 +74,22 @@ public class TestCaseService {
                 testCase.setTestUrl(request.getTestUrl());
             }
         }
-        
+
         TestCase savedTestCase = testCaseRepository.save(testCase);
-        
+
         // Pour les tests PERFORMANCE, on ne crée pas de steps
-        if (request.getTestType() != TestCase.TestType.PERFORMANCE && 
-            request.getSteps() != null && !request.getSteps().isEmpty()) {
-            List<TestCaseStep> steps = request.getSteps().stream().map(stepReq ->{
-               TestCaseStep testCaseStep = new TestCaseStep();
-               testCaseStep.setStepName(stepReq.getStepName());
-               testCaseStep.setExpectedResult(stepReq.getExpectedResult());
-               testCaseStep.setCreatedBy(user);
-               testCaseStep.setTestCase(savedTestCase);
+        if (request.getTestType() != TestCase.TestType.PERFORMANCE &&
+                request.getSteps() != null && !request.getSteps().isEmpty()) {
+            List<TestCaseStep> steps = request.getSteps().stream().map(stepReq -> {
+                TestCaseStep testCaseStep = new TestCaseStep();
+                testCaseStep.setStepName(stepReq.getStepName());
+                testCaseStep.setExpectedResult(stepReq.getExpectedResult());
+                testCaseStep.setCreatedBy(user);
+                testCaseStep.setTestCase(savedTestCase);
                 testCaseStep.setActionType(stepReq.getActionType());
                 testCaseStep.setActionTarget(stepReq.getActionTarget());
                 testCaseStep.setActionValue(stepReq.getActionValue());
-               return testCaseStep;
+                return testCaseStep;
             }).toList();
             testCaseStepRepository.saveAll(steps);
         }
@@ -102,7 +107,6 @@ public class TestCaseService {
         return testCaseRepository.findByIdWithSteps(id)
                 .orElseThrow(() -> new RuntimeException("Test case not found with id: " + id));
     }
-
 
     @Transactional(readOnly = true)
     public TestCase getTestCaseDetails(Long suiteId, Long id) {
@@ -146,14 +150,21 @@ public class TestCaseService {
         }
 
         // Mettre à jour les champs de base
-        if (request.getTitle() != null) testCase.setTitle(request.getTitle());
-        if (request.getDescription() != null) testCase.setDescription(request.getDescription());
-        if (request.getPrecondition() != null) testCase.setPrecondition(request.getPrecondition());
-        if (request.getTestType() != null) testCase.setTestType(request.getTestType());
-        if (request.getPriority() != null) testCase.setPriority(request.getPriority());
-        if (request.getStatus() != null) testCase.setStatus(request.getStatus());
-        if (request.getTestUrl() != null) testCase.setTestUrl(request.getTestUrl());
-        
+        if (request.getTitle() != null)
+            testCase.setTitle(request.getTitle());
+        if (request.getDescription() != null)
+            testCase.setDescription(request.getDescription());
+        if (request.getPrecondition() != null)
+            testCase.setPrecondition(request.getPrecondition());
+        if (request.getTestType() != null)
+            testCase.setTestType(request.getTestType());
+        if (request.getPriority() != null)
+            testCase.setPriority(request.getPriority());
+        if (request.getStatus() != null)
+            testCase.setStatus(request.getStatus());
+        if (request.getTestUrl() != null)
+            testCase.setTestUrl(request.getTestUrl());
+
         // Pour les tests de performance : mettre à jour performanceConfig
         if (testCase.getTestType() == TestCase.TestType.PERFORMANCE && request.getPerformanceConfig() != null) {
             try {
@@ -164,7 +175,7 @@ public class TestCaseService {
                 throw new RuntimeException("Failed to serialize performance config", e);
             }
         }
-        
+
         // Mettre à jour la date de modification
         testCase.setUpdatedAt(LocalDateTime.now());
 
@@ -226,17 +237,18 @@ public class TestCaseService {
                 "readyTestCases", testCaseRepository.countByStatus(TestCase.Status.READY),
                 "runningTestCases", testCaseRepository.countByStatus(TestCase.Status.RUNNING),
                 "passedTestCases", testCaseRepository.countByStatus(TestCase.Status.PASSED),
-                "failedTestCases", testCaseRepository.countByStatus(TestCase.Status.FAILED)
-                );
+                "failedTestCases", testCaseRepository.countByStatus(TestCase.Status.FAILED));
     }
-    public Long getUserIdByUsername(String firstName ) {
+
+    public Long getUserIdByUsername(String firstName) {
         return userRepository.findByEmail(firstName)
                 .map(User::getId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + firstName));
     }
+
     public Map<String, Object> triggerAutomatedTest(Long testCaseId, Long userId,
-                                     String jenkinsJobUrl, String jenkinsUser,
-                                     String jenkinsToken) {
+            String jenkinsJobUrl, String jenkinsUser,
+            String jenkinsToken) {
         TestCase testCase = getTestCaseById(testCaseId);
         if (testCase.getTestType() != TestCase.TestType.AUTOMATED &&
                 testCase.getTestType() != TestCase.TestType.PERFORMANCE) {
@@ -248,34 +260,83 @@ public class TestCaseService {
 
         // Appel du service Selenium / Jenkins
         Map<String, Object> response = seleniumExecutionService.triggerTestCaseViaJenkins(
-                testCaseId, userId, jenkinsJobUrl, jenkinsUser, jenkinsToken, scenarioJson
-        );
+                testCaseId, userId, jenkinsJobUrl, jenkinsUser, jenkinsToken, scenarioJson);
 
         testCase.setStatus(TestCase.Status.RUNNING);
         testCaseRepository.save(testCase);
         return response;
     }
 
+    public Map<String, Object> executeTestSuite(Long suiteId, Long userId, String seleniumJobUrl,
+            String performanceJobUrl, String jenkinsUser,
+            String jenkinsToken) {
+        List<TestCase> testCases = testCaseRepository.findAllByTestSuiteId(suiteId);
+        List<TestCase> executableTestCases = testCases.stream()
+                .filter(tc -> tc.getTestType() == TestCase.TestType.AUTOMATED
+                        || tc.getTestType() == TestCase.TestType.PERFORMANCE)
+                .toList();
+
+        if (executableTestCases.isEmpty()) {
+            throw new RuntimeException("No executable test cases (AUTOMATED or PERFORMANCE) found in this suite");
+        }
+
+        int triggeredCount = 0;
+        List<String> errors = new java.util.ArrayList<>();
+
+        for (TestCase tc : executableTestCases) {
+            try {
+                String jobUrl = null;
+                if (tc.getTestType() == TestCase.TestType.AUTOMATED) {
+                    jobUrl = seleniumJobUrl;
+                } else if (tc.getTestType() == TestCase.TestType.PERFORMANCE) {
+                    jobUrl = performanceJobUrl;
+                }
+
+                if (jobUrl != null && !jobUrl.isBlank()) {
+                    triggerAutomatedTest(tc.getId(), userId, jobUrl, jenkinsUser, jenkinsToken);
+                    triggeredCount++;
+                } else {
+                    errors.add("Skipped test " + tc.getId() + ": No Jenkins URL provided for type " + tc.getTestType());
+                }
+            } catch (Exception e) {
+                errors.add("Failed to trigger test case " + tc.getId() + ": " + e.getMessage());
+                // Continue triggering others even if one fails
+            }
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("suiteId", suiteId);
+        response.put("totalTestCases", testCases.size());
+        response.put("executableTestCases", executableTestCases.size());
+        response.put("triggeredCount", triggeredCount);
+        response.put("message", "Triggered " + triggeredCount + " test cases for execution");
+        if (!errors.isEmpty()) {
+            response.put("errors", errors);
+        }
+
+        return response;
+    }
 
     public String buildSeleniumScenarioJson(TestCase testCase) {
         Map<String, Object> scenario = new HashMap<>();
         scenario.put("testCaseId", testCase.getId());
         scenario.put("title", testCase.getTitle());
         scenario.put("url", testCase.getTestUrl());
-        scenario.put("testType", testCase.getTestType() != null ? testCase.getTestType().name() : TestCase.TestType.MANUAL.name());
+        scenario.put("testType",
+                testCase.getTestType() != null ? testCase.getTestType().name() : TestCase.TestType.MANUAL.name());
 
         List<Map<String, Object>> steps = testCaseStepRepository.findByTestCaseIdOrderByIdAsc(testCase.getId())
                 .stream()
                 .map(step -> {
-            Map<String, Object> map = new HashMap<>();
-            map.put("stepName", step.getStepName());
-            map.put("actionType", step.getActionType());
-            map.put("actionTarget", step.getActionTarget());
-            map.put("actionValue", step.getActionValue());
-            map.put("expectedResult", step.getExpectedResult());
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("stepName", step.getStepName());
+                    map.put("actionType", step.getActionType());
+                    map.put("actionTarget", step.getActionTarget());
+                    map.put("actionValue", step.getActionValue());
+                    map.put("expectedResult", step.getExpectedResult());
                     map.put("selectorType", inferSelectorType(step.getActionTarget()));
-            return map;
-        }).collect(Collectors.toList());
+                    return map;
+                }).collect(Collectors.toList());
         scenario.put("steps", steps);
         try {
             // Retourner un tableau avec un seul scénario pour compatibilité avec Jenkins
@@ -299,9 +360,5 @@ public class TestCaseService {
         }
         return "css";
     }
-
-
-
-
 
 }

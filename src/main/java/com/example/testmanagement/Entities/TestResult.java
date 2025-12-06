@@ -14,19 +14,23 @@ import java.time.LocalDateTime;
 @Table(name = "test_results")
 public class TestResult {
 
-    public enum ResultStatus { RUNNING, PASSED, FAILED , PENDING}
+    public enum ResultStatus {
+        RUNNING, PASSED, FAILED, PENDING
+    }
 
-    @Id  @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "run_id")
-    @JsonIgnoreProperties({"testCase", "testResults", "createdBy", "hibernateLazyInitializer", "handler"})
+    @JsonIgnoreProperties({ "testCase", "testResults", "createdBy", "hibernateLazyInitializer", "handler" })
     private TestRun testRun;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "case_id")
-    @JsonIgnoreProperties({"testResults", "testCaseSteps", "testSuite", "createdBy", "hibernateLazyInitializer", "handler"})
+    @JsonIgnoreProperties({ "testResults", "testCaseSteps", "testSuite", "testRuns", "createdBy",
+            "hibernateLazyInitializer", "handler" })
     private TestCase testCase;
 
     @Enumerated(EnumType.STRING)
@@ -45,7 +49,7 @@ public class TestResult {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "executed_by")
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "password", "roles"})
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler", "password", "roles" })
     private User executedBy;
 
     private Double avgResponseTimeMs;
@@ -53,6 +57,5 @@ public class TestResult {
     private Double p95ResponseTimeMs;
     private Double errorRatePercent;
     private String jmeterReportUrl;
-
 
 }

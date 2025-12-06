@@ -34,7 +34,7 @@ public class TestCaseController {
             @RequestBody CreateTestCaseRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        TestCase testCase = testCaseService.createTestCase(request, userDetails.getUsername(),testsuiteId);
+        TestCase testCase = testCaseService.createTestCase(request, userDetails.getUsername(), testsuiteId);
         return ResponseEntity.status(HttpStatus.CREATED).body(TestCaseResponse.fromEntity(testCase));
     }
 
@@ -53,7 +53,8 @@ public class TestCaseController {
     }
 
     /**
-     * Récupère les détails complets d'un test case (steps, performance config, etc.)
+     * Récupère les détails complets d'un test case (steps, performance config,
+     * etc.)
      */
     @GetMapping("/{id}/details")
     public ResponseEntity<TestCaseResponse> getTestCaseDetails(
@@ -120,6 +121,7 @@ public class TestCaseController {
         Map<String, Long> statistics = testCaseService.getTestCaseStatistics();
         return ResponseEntity.ok(statistics);
     }
+
     @GetMapping("/count-by-type")
     public Map<String, Long> getTestCaseCountByType() {
         long manual = testCaseRepository.countByTestType(TestCase.TestType.MANUAL);
@@ -133,6 +135,12 @@ public class TestCaseController {
         return response;
     }
 
-
+    @GetMapping("/all")
+    public ResponseEntity<List<TestCaseResponse>> getAllTestCasesWithoutFilter() {
+        List<TestCaseResponse> testCases = testCaseRepository.findAll().stream()
+                .map(TestCaseResponse::fromEntity)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(testCases);
+    }
 
 }

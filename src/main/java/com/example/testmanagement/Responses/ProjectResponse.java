@@ -30,7 +30,11 @@ public class ProjectResponse {
         response.setId(project.getId());
         response.setProjectName(project.getProjectName());
         response.setDescription(project.getDescription());
-        response.setCreatedBy(project.getCreatedBy().getFirstName() + " " + project.getCreatedBy().getLastName());
+        if (project.getCreatedBy() != null) {
+            response.setCreatedBy(project.getCreatedBy().getFirstName() + " " + project.getCreatedBy().getLastName());
+        } else {
+            response.setCreatedBy("Unknown");
+        }
         response.setStatus(project.getStatus());
         response.setTeamSize(project.getTeamSize());
         response.setLastActivity(project.getLastActivity());
