@@ -47,7 +47,7 @@ public class ScheduleService {
         if (request.getAssignedToUserId() != null) {
             User assignedUser = userRepository.findById(request.getAssignedToUserId())
                     .orElseThrow(() -> new RuntimeException("Assigned user not found"));
-            schedule.setAssignedTo(assignedUser);
+            // schedule.setAssignedTo(assignedUser);
         }
         schedule.setLastExecutionStatus(ScheduledTestExecution.ExecutionStatus.PENDING);
 
@@ -70,20 +70,20 @@ public class ScheduleService {
         boolean hasPrivilegedAccess = currentUser.getRoles().stream()
                 .anyMatch(r -> r.getName().equalsIgnoreCase("ADMIN") ||
                         r.getName().equalsIgnoreCase("ROLE_ADMIN") ||
-                        r.getName().equalsIgnoreCase("AUDIT") ||
-                        r.getName().equalsIgnoreCase("ROLE_AUDIT"));
+                        r.getName().equalsIgnoreCase("ROLE_TESTER"));
+        // || r.getName().equalsIgnoreCase("ROLE_AUDIT"));
 
         System.out.println("Has privileged access: " + hasPrivilegedAccess);
 
         if (hasPrivilegedAccess) {
             List<ScheduledTestExecution> allSchedules = scheduleRepository.findAll();
-            System.out.println("Total schedules found (Admin/Audit): " + allSchedules.size());
+            System.out.println("Total schedules found (Admin/Tester): " + allSchedules.size());
             return allSchedules.stream()
                     .map(ScheduleResponse::new)
                     .collect(Collectors.toList());
         }
 
-        List<ScheduledTestExecution> assignedSchedules = scheduleRepository.findByAssignedTo(currentUser);
+        List<ScheduledTestExecution> assignedSchedules = scheduleRepository.findByCreatedBy(currentUser);
         System.out.println("Assigned schedules found: " + assignedSchedules.size());
         return assignedSchedules.stream()
                 .map(ScheduleResponse::new)

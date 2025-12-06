@@ -12,18 +12,15 @@ import java.util.List;
 @Repository
 public interface ScheduledTestExecutionRepository extends JpaRepository<ScheduledTestExecution, Long> {
 
-    @EntityGraph(attributePaths = { "testCase", "createdBy", "assignedTo" })
+    @EntityGraph(attributePaths = { "testCase", "createdBy" })
     List<ScheduledTestExecution> findByActive(Boolean active);
 
-    @EntityGraph(attributePaths = { "testCase", "createdBy", "assignedTo" })
+    @EntityGraph(attributePaths = { "testCase", "createdBy" })
     List<ScheduledTestExecution> findByCreatedBy(User user);
 
-    @EntityGraph(attributePaths = { "testCase", "createdBy", "assignedTo" })
-    List<ScheduledTestExecution> findByAssignedTo(User user);
-
-    @EntityGraph(attributePaths = { "testCase", "createdBy", "assignedTo" })
+    @EntityGraph(attributePaths = { "testCase", "createdBy" })
     List<ScheduledTestExecution> findByNextExecutionTimeBeforeAndActive(LocalDateTime time, Boolean active);
 
-    @EntityGraph(attributePaths = { "testCase", "createdBy", "assignedTo" })
+    @EntityGraph(attributePaths = { "testCase", "createdBy" })
     List<ScheduledTestExecution> findByActiveOrderByNextExecutionTimeAsc(Boolean active);
 }

@@ -32,6 +32,13 @@ public class ProjectService {
         Optional<User> user = Optional.ofNullable(
                 userService.findByUsername(username).orElseThrow(() -> new RuntimeException("User Not Found")));
         user.ifPresent(project::setCreatedBy);
+
+        if (project.getAssignedToUserId() != null) {
+            User assignee = userService.findById(project.getAssignedToUserId())
+                    .orElseThrow(() -> new RuntimeException("Assigned User Not Found"));
+            project.setAssignedTo(assignee);
+        }
+
         return projectRepository.save(project);
     }
 
@@ -40,7 +47,15 @@ public class ProjectService {
         User user = userService.findByUsername(username).orElseThrow(() -> new RuntimeException("User Not Found"));
 
         if (!project.getCreatedBy().getId().equals(user.getId())) {
-            throw new RuntimeException("You can updated only your own projects");
+            // Check if admin? Or prevent update. Existing code prevented update.
+            // If admin, maybe allow? For now, stick to original restriction or allow
+            // Project Lead?
+            // "Tester can only execute". Admin creates.
+            boolean isAdmin = user.getRoles().stream()
+                    .anyMatch(r -> r.getName().equalsIgnoreCase("ADMIN") || r.getName().equalsIgnoreCase("ROLE_ADMIN"));
+            if (!isAdmin) {
+                throw new RuntimeException("You can updated only your own projects");
+            }
         }
         if (projectDetails.getProjectName() != null) {
             project.setProjectName(projectDetails.getProjectName());
@@ -54,12 +69,31 @@ public class ProjectService {
         if (projectDetails.getTeamSize() != null) {
             project.setTeamSize(projectDetails.getTeamSize());
         }
+        if (projectDetails.getAssignedToUserId() != null) {
+            User assignee = userService.findById(projectDetails.getAssignedToUserId())
+                    .orElseThrow(() -> new RuntimeException("Assigned User Not Found"));
+            project.setAssignedTo(assignee);
+        }
         return projectRepository.save(project);
     }
 
     public List<ProjectResponse> getAllProjects(String username) {
         User user = userService.findByUsername(username).orElseThrow(() -> new RuntimeException("User Not Found"));
-        List<Project> projects = projectRepository.findByCreatedBy(user);
+
+        boolean isAdmin = user.getRoles().stream()
+                .anyMatch(r -> r.getName().equalsIgnoreCase("ADMIN") || r.getName().equalsIgnoreCase("ROLE_ADMIN"));
+
+        List<Project> projects;
+        if (isAdmin) {
+            projects = projectRepository.findAll();
+        } else {
+            // Tester or other: See created by me OR assigned to me
+            List<Project> created = projectRepository.findByCreatedBy(user);
+            List<Project> assigned = projectRepository.findByAssignedTo(user);
+            Set<Project> combined = new HashSet<>(created);
+            combined.addAll(assigned);
+            projects = new ArrayList<>(combined);
+        }
 
         return projects.stream()
                 .map(ProjectResponse::fromEntity)

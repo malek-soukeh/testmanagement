@@ -15,7 +15,9 @@ import java.util.*;
 @Table(name = "projects")
 public class Project {
 
-    public enum Status { ACTIVE, MAINTENANCE, ARCHIVED }
+    public enum Status {
+        ACTIVE, MAINTENANCE, ARCHIVED
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,8 +28,13 @@ public class Project {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "password", "role"})
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler", "password", "role" })
     private User createdBy;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_to")
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler", "password", "roles", "testCases" })
+    private User assignedTo;
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnoreProperties("project")
@@ -43,14 +50,15 @@ public class Project {
     private LocalDateTime updatedAt;
 
     @Transient
+    private Long assignedToUserId;
+
+    @Transient
     public Long getTotalTestCases() {
         if (testSuites == null || testSuites.isEmpty()) {
             return 0L;
         }
         return testSuites.stream()
-                .mapToLong(testSuite ->
-                        testSuite.getTestCases() != null ? testSuite.getTestCases().size() : 0L
-                )
+                .mapToLong(testSuite -> testSuite.getTestCases() != null ? testSuite.getTestCases().size() : 0L)
                 .sum();
     }
 

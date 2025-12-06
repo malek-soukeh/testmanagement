@@ -38,9 +38,7 @@ public class ScheduledTestExecution {
     @JoinColumn(name = "created_by")
     private User createdBy;
 
-    @ManyToOne
-    @JoinColumn(name = "assigned_to")
-    private User assignedTo;
+    // private User assignedTo;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -202,13 +200,7 @@ public class ScheduledTestExecution {
         this.failureCount = failureCount;
     }
 
-    public User getAssignedTo() {
-        return assignedTo;
-    }
-
-    public void setAssignedTo(User assignedTo) {
-        this.assignedTo = assignedTo;
-    }
+    // assignedTo removed as per request
 
     @PreUpdate
     public void preUpdate() {

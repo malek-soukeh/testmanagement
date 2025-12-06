@@ -34,16 +34,23 @@ public class DashboardService {
                 long totalProjects = projectRepository.count();
                 long totalTestCases = testCaseRepository.count();
 
-                List<TestResult> allResults = testResultRepository.findAll();
+                List<TestCase> allTestCases = testCaseRepository.findAll();
                 double overallPassRate = 0.0;
-                if (!allResults.isEmpty()) {
-                        long passedCount = allResults.stream()
-                                        .filter(r -> r.getStatus() == TestResult.ResultStatus.PASSED)
+
+                if (!allTestCases.isEmpty()) {
+                        long passedTestCases = allTestCases.stream()
+                                        .filter(tc -> {
+                                                List<TestResult> results = tc.getTestResults();
+                                                return !results.isEmpty() &&
+                                                                results.get(results.size() - 1)
+                                                                                .getStatus() == TestResult.ResultStatus.PASSED;
+                                        })
                                         .count();
-                        overallPassRate = (double) passedCount / allResults.size() * 100;
+                        overallPassRate = (double) passedTestCases / allTestCases.size() * 100;
                 }
 
                 // Assuming "Critical Issues" are failed tests today
+                List<TestResult> allResults = testResultRepository.findAll();
                 LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
                 long criticalIssues = allResults.stream()
                                 .filter(r -> r.getStatus() == TestResult.ResultStatus.FAILED

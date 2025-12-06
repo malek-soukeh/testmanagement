@@ -25,6 +25,9 @@ public class ProjectResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    private Long assignedToUserId;
+    private String assignedToUsername;
+
     public static ProjectResponse fromEntity(Project project) {
         ProjectResponse response = new ProjectResponse();
         response.setId(project.getId());
@@ -34,6 +37,11 @@ public class ProjectResponse {
             response.setCreatedBy(project.getCreatedBy().getFirstName() + " " + project.getCreatedBy().getLastName());
         } else {
             response.setCreatedBy("Unknown");
+        }
+        if (project.getAssignedTo() != null) {
+            response.setAssignedToUserId(project.getAssignedTo().getId());
+            response.setAssignedToUsername(
+                    project.getAssignedTo().getFirstName() + " " + project.getAssignedTo().getLastName());
         }
         response.setStatus(project.getStatus());
         response.setTeamSize(project.getTeamSize());

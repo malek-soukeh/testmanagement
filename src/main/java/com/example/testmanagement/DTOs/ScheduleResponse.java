@@ -14,8 +14,8 @@ public class ScheduleResponse {
     private Boolean active;
     private String createdByUsername;
     private LocalDateTime createdAt;
-    private Long assignedToUserId;
-    private String assignedToUsername;
+  //  private Long assignedToUserId;
+   // private String assignedToUsername;
 
     public ScheduleResponse(ScheduledTestExecution schedule) {
         this.id = schedule.getId();
@@ -28,10 +28,10 @@ public class ScheduleResponse {
         this.active = schedule.getActive();
         this.createdByUsername = schedule.getCreatedBy() != null ? schedule.getCreatedBy().getEmail() : null;
         this.createdAt = schedule.getCreatedAt();
-        this.assignedToUserId = schedule.getAssignedTo() != null ? schedule.getAssignedTo().getId() : null;
-        this.assignedToUsername = schedule.getAssignedTo() != null
-                ? (schedule.getAssignedTo().getFirstName() + " " + schedule.getAssignedTo().getLastName())
-                : null;
+        //this.assignedToUserId = schedule.getAssignedTo() != null ? schedule.getAssignedTo().getId() : null;
+        //this.assignedToUsername = schedule.getAssignedTo() != null
+                //? (schedule.getAssignedTo().getFirstName() + " " + schedule.getAssignedTo().getLastName())
+              //  : null;
     }
 
     // Getters and Setters
@@ -111,19 +111,13 @@ public class ScheduleResponse {
         return createdAt;
     }
 
-    public Long getAssignedToUserId() {
-        return assignedToUserId;
-    }
 
-    public void setAssignedToUserId(Long assignedToUserId) {
-        this.assignedToUserId = assignedToUserId;
-    }
 
-    public String getAssignedToUsername() {
-        return assignedToUsername;
-    }
+   // public String getAssignedToUsername() {
+       // return assignedToUsername;
+    //}
 
-    public void setAssignedToUsername(String assignedToUsername) {
-        this.assignedToUsername = assignedToUsername;
-    }
+    //public void setAssignedToUsername(String assignedToUsername) {
+       // this.assignedToUsername = assignedToUsername;
+    //}
 }
