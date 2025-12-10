@@ -65,13 +65,10 @@ public class ScheduleService {
 
     public List<ScheduleResponse> getAllSchedules(User currentUser) {
         System.out.println("Fetching schedules for user: " + currentUser.getEmail());
-        currentUser.getRoles().forEach(r -> System.out.println("User Role: " + r.getName()));
+        System.out.println("User Role: " + currentUser.getRole().name());
 
-        boolean hasPrivilegedAccess = currentUser.getRoles().stream()
-                .anyMatch(r -> r.getName().equalsIgnoreCase("ADMIN") ||
-                        r.getName().equalsIgnoreCase("ROLE_ADMIN") ||
-                        r.getName().equalsIgnoreCase("ROLE_TESTER"));
-        // || r.getName().equalsIgnoreCase("ROLE_AUDIT"));
+        boolean hasPrivilegedAccess = (currentUser.getRole() == Role.ROLE_ADMIN
+                || currentUser.getRole() == Role.ROLE_TESTER);
 
         System.out.println("Has privileged access: " + hasPrivilegedAccess);
 

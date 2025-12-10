@@ -33,7 +33,7 @@ public class TestExecutionController {
     private final JenkinsConfig jenkinsConfig;
 
     @PostMapping("/{testCaseId}/run")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN','ROLE_TESTER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_TESTER')")
     public ResponseEntity<Map<String, Object>> runAutomatedTest(
             @PathVariable Long testCaseId,
             @AuthenticationPrincipal UserDetails userDetails,
@@ -50,7 +50,7 @@ public class TestExecutionController {
     }
 
     @PostMapping("/suite/{suiteId}/run")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN','ROLE_TESTER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_TESTER')")
     public ResponseEntity<Map<String, Object>> runTestSuite(
             @PathVariable Long suiteId,
             @AuthenticationPrincipal UserDetails userDetails,
@@ -107,7 +107,7 @@ public class TestExecutionController {
 
     @GetMapping("/results/{testResultId}/report/pdf")
     public ResponseEntity<ByteArrayResource> downloadReportPdf(@PathVariable Long testResultId) {
-        byte[] pdf = testReportService.buildSeleniumPdf(testResultId);
+        byte[] pdf = testReportService.generatePdf(testResultId);
         ByteArrayResource resource = new ByteArrayResource(pdf);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,

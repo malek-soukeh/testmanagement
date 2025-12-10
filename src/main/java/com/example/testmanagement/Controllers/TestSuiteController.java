@@ -49,7 +49,7 @@ public class TestSuiteController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN','ROLE_TESTER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_TESTER')")
     public ResponseEntity<Void> deleteTestSuite(@PathVariable Long id,
             @AuthenticationPrincipal UserDetails userDetails) {
         try {

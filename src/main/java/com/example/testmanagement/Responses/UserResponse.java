@@ -11,5 +11,5 @@ public class UserResponse {
     private String lastName;
     private String email;
     private boolean enabled;
-    private Set<String> roles;
+    private String role;
 }

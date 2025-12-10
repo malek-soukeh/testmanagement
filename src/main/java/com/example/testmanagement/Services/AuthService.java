@@ -16,40 +16,39 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class AuthService {
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final JwtUtil jwtService;
-    private final AuthenticationManager authenticationManager;
+        private final UserRepository userRepository;
+        private final PasswordEncoder passwordEncoder;
+        private final JwtUtil jwtService;
+        private final AuthenticationManager authenticationManager;
 
-    public JwtAuthenticationResponse signin(LoginRequest request)
-    {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
-        var user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password."));
-        CustomUserDetails userDetails = new CustomUserDetails(user);
+        public JwtAuthenticationResponse signin(LoginRequest request) {
+                authenticationManager.authenticate(
+                                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+                var user = userRepository.findByEmail(request.getEmail())
+                                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password."));
+                CustomUserDetails userDetails = new CustomUserDetails(user);
 
-        var jwt = jwtService.generateToken(userDetails);
-        return JwtAuthenticationResponse.builder()
-                .token(jwt)
-                .build();
-    }
+                var jwt = jwtService.generateToken(userDetails);
+                return JwtAuthenticationResponse.builder()
+                                .token(jwt)
+                                .build();
+        }
 
-    public JwtAuthenticationResponse signup(SignUpRequest request)
-    { var user = User.builder()
-            .firstName(request.getFirstName())
-            .lastName(request.getLastName())
-            .email(request.getEmail())
-            .password(passwordEncoder.encode(request.getPassword()))
-            .build();
-        userRepository.save(user);
-        CustomUserDetails userDetails = new CustomUserDetails(user);
+        public JwtAuthenticationResponse signup(SignUpRequest request) {
+                var user = User.builder()
+                                .firstName(request.getFirstName())
+                                .lastName(request.getLastName())
+                                .email(request.getEmail())
+                                .password(passwordEncoder.encode(request.getPassword()))
+                                .role(com.example.testmanagement.Entities.Role.ROLE_TESTER)
+                                .enabled(true)
+                                .build();
+                userRepository.save(user);
+                CustomUserDetails userDetails = new CustomUserDetails(user);
 
-        var jwt = jwtService.generateToken(userDetails);
-        return JwtAuthenticationResponse.builder().token(jwt).build();
+                var jwt = jwtService.generateToken(userDetails);
+                return JwtAuthenticationResponse.builder().token(jwt).build();
 
-    }
-
-
+        }
 
 }

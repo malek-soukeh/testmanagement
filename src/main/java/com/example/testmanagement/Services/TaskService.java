@@ -8,6 +8,7 @@ import com.example.testmanagement.Repository.TaskRepository;
 import com.example.testmanagement.Repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.example.testmanagement.Entities.Role;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -56,9 +57,7 @@ public class TaskService {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Task not found"));
 
-        boolean isAdmin = currentUser.getRoles().stream()
-                .anyMatch(r -> r.getName().equalsIgnoreCase("ADMIN") ||
-                        r.getName().equalsIgnoreCase("ROLE_ADMIN"));
+        boolean isAdmin = currentUser.getRole() == Role.ROLE_ADMIN;
 
         if (!isAdmin) {
             // Tester: Can only update if assigned to them

@@ -32,13 +32,13 @@ public class PerformanceController {
      * Utilise la configuration Jenkins depuis application.properties
      */
     @PostMapping("/{testCaseId}/run")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN','ROLE_TESTER')")
-    public ResponseEntity<Map<String,Object>> runPerformance(
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_TESTER')")
+    public ResponseEntity<Map<String, Object>> runPerformance(
             @PathVariable Long testCaseId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         Long userId = testCaseService.getUserIdByUsername(userDetails.getUsername());
-        Map<String,Object> resp = performanceExecutionService.triggerPerformanceTest(testCaseId, userId);
+        Map<String, Object> resp = performanceExecutionService.triggerPerformanceTest(testCaseId, userId);
         return ResponseEntity.accepted().body(resp);
     }
 
@@ -46,7 +46,7 @@ public class PerformanceController {
      * Exécute un test de performance avec des credentials Jenkins personnalisés
      */
     @PostMapping("/{testCaseId}/run/custom")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN','ROLE_TESTER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_TESTER')")
     public ResponseEntity<Map<String, Object>> runPerformanceWithCustomJenkins(
             @PathVariable Long testCaseId,
             @AuthenticationPrincipal UserDetails userDetails,
@@ -89,16 +89,16 @@ public class PerformanceController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid Jenkins callback token");
         }
     }
- @GetMapping("/test-cases/{testCaseId}/performance-results")
-public ResponseEntity<Map<String, Object>> getPerformanceResults(@PathVariable Long testCaseId) {
-    TestResult result = testResultRepository.findTopByTestCaseIdOrderByExecutedAtDesc(testCaseId)
-            .orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.NOT_FOUND, 
-                "Aucun résultat de test de performance trouvé pour le test case: " + testCaseId
-            ));
-    Map<String, Object> response = new HashMap<>();
-    response.put("testResult", result);
-    response.put("reportUrl", result.getJmeterReportUrl());
-    return ResponseEntity.ok(response);
-}
+
+    @GetMapping("/test-cases/{testCaseId}/performance-results")
+    public ResponseEntity<Map<String, Object>> getPerformanceResults(@PathVariable Long testCaseId) {
+        TestResult result = testResultRepository.findTopByTestCaseIdOrderByExecutedAtDesc(testCaseId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Aucun résultat de test de performance trouvé pour le test case: " + testCaseId));
+        Map<String, Object> response = new HashMap<>();
+        response.put("testResult", result);
+        response.put("reportUrl", result.getJmeterReportUrl());
+        return ResponseEntity.ok(response);
+    }
 }

@@ -7,10 +7,11 @@ import com.example.testmanagement.Entities.User;
 import com.example.testmanagement.Repository.ProjectRepository;
 import com.example.testmanagement.Repository.TestCaseRepository;
 import com.example.testmanagement.Responses.ProjectResponse;
-import org.mockito.InjectMocks;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.testmanagement.Entities.Role;
 import java.util.*;
 
 @Service
@@ -20,12 +21,14 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final UserService userService;
     private final TestCaseRepository testCaseRepository;
+    private final AuditLogService auditLogService;
 
     public ProjectService(ProjectRepository projectRepository, UserService userService,
-            TestCaseRepository testCaseRepository) {
+            TestCaseRepository testCaseRepository, AuditLogService auditLogService) {
         this.projectRepository = projectRepository;
         this.userService = userService;
         this.testCaseRepository = testCaseRepository;
+        this.auditLogService = auditLogService;
     }
 
     public Project createProject(Project project, String username) {
@@ -39,7 +42,10 @@ public class ProjectService {
             project.setAssignedTo(assignee);
         }
 
-        return projectRepository.save(project);
+        Project savedProject = projectRepository.save(project);
+        auditLogService.logAction("CREATE", "PROJECT", savedProject.getId().toString(),
+                "Created project: " + savedProject.getProjectName());
+        return savedProject;
     }
 
     public Project updateProject(Long id, Project projectDetails, String username) {
@@ -51,8 +57,7 @@ public class ProjectService {
             // If admin, maybe allow? For now, stick to original restriction or allow
             // Project Lead?
             // "Tester can only execute". Admin creates.
-            boolean isAdmin = user.getRoles().stream()
-                    .anyMatch(r -> r.getName().equalsIgnoreCase("ADMIN") || r.getName().equalsIgnoreCase("ROLE_ADMIN"));
+            boolean isAdmin = user.getRole() == Role.ROLE_ADMIN;
             if (!isAdmin) {
                 throw new RuntimeException("You can updated only your own projects");
             }
@@ -74,14 +79,16 @@ public class ProjectService {
                     .orElseThrow(() -> new RuntimeException("Assigned User Not Found"));
             project.setAssignedTo(assignee);
         }
-        return projectRepository.save(project);
+        Project updatedProject = projectRepository.save(project);
+        auditLogService.logAction("UPDATE", "PROJECT", updatedProject.getId().toString(),
+                "Updated project: " + updatedProject.getProjectName());
+        return updatedProject;
     }
 
     public List<ProjectResponse> getAllProjects(String username) {
         User user = userService.findByUsername(username).orElseThrow(() -> new RuntimeException("User Not Found"));
 
-        boolean isAdmin = user.getRoles().stream()
-                .anyMatch(r -> r.getName().equalsIgnoreCase("ADMIN") || r.getName().equalsIgnoreCase("ROLE_ADMIN"));
+        boolean isAdmin = user.getRole() == Role.ROLE_ADMIN;
 
         List<Project> projects;
         if (isAdmin) {
@@ -107,11 +114,13 @@ public class ProjectService {
         User user = userService.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found: " + username));
 
-        boolean isAdmin = user.getRoles().stream().anyMatch(role -> role.getName().equals("ROLE_ADMIN"));
+        boolean isAdmin = user.getRole() == Role.ROLE_ADMIN;
 
         if (!isAdmin && !project.getCreatedBy().getId().equals(user.getId())) {
             throw new RuntimeException("You can only delete your own projects");
         }
+
+        auditLogService.logAction("DELETE", "PROJECT", id.toString(), "Deleted project: " + project.getProjectName());
 
         // Manually delete all test cases associated with this project's test suites
         // to avoid foreign key constraint violations

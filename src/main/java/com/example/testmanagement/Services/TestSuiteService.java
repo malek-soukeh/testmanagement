@@ -10,6 +10,7 @@ import com.example.testmanagement.Repository.TestSuiteRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.testmanagement.Entities.Role;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -86,7 +87,7 @@ public class TestSuiteService {
         User user = userService.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        boolean isAdmin = user.getRoles().stream().anyMatch(role -> role.getName().equals("ROLE_ADMIN"));
+        boolean isAdmin = user.getRole() == Role.ROLE_ADMIN;
 
         if (!isAdmin && !suite.getCreatedBy().getId().equals(user.getId())) {
             throw new RuntimeException("You can only delete your own test suites");

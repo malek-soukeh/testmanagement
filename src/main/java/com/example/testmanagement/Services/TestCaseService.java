@@ -31,6 +31,7 @@ public class TestCaseService {
     private final UserRepository userRepository;
     private final TestCaseStepRepository testCaseStepRepository;
     private final SeleniumExecutionService seleniumExecutionService;
+    private final AuditLogService auditLogService;
 
     public TestCase createTestCase(CreateTestCaseRequest request, String username, Long testSuiteId) {
         User user = userRepository.findByEmail(username)
@@ -76,6 +77,8 @@ public class TestCaseService {
         }
 
         TestCase savedTestCase = testCaseRepository.save(testCase);
+        auditLogService.logAction("CREATE", "TEST_CASE", savedTestCase.getId().toString(),
+                "Created test case: " + savedTestCase.getTitle());
 
         // Pour les tests PERFORMANCE, on ne crée pas de steps
         if (request.getTestType() != TestCase.TestType.PERFORMANCE &&
@@ -181,6 +184,8 @@ public class TestCaseService {
 
         // Sauvegarder le test case d'abord
         TestCase savedTestCase = testCaseRepository.save(testCase);
+        auditLogService.logAction("UPDATE", "TEST_CASE", savedTestCase.getId().toString(),
+                "Updated test case: " + savedTestCase.getTitle());
 
         // Pour les tests PERFORMANCE, on ne gère pas les steps
         // Gérer la mise à jour des steps si fournis (uniquement pour les autres types)
@@ -223,6 +228,7 @@ public class TestCaseService {
             throw new RuntimeException("You can only delete your own test cases");
         }
 
+        auditLogService.logAction("DELETE", "TEST_CASE", id.toString(), "Deleted test case: " + testCase.getTitle());
         testCaseRepository.delete(testCase);
     }
 

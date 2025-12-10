@@ -29,6 +29,17 @@ public class TestReportService {
     private final TestResultRepository testResultRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    public byte[] generatePdf(Long testResultId) {
+        TestResult result = testResultRepository.findById(testResultId)
+                .orElseThrow(() -> new RuntimeException("TestResult not found"));
+
+        if ("PERFORMANCE".equalsIgnoreCase(result.getTestType())) {
+            return buildPerformancePdf(testResultId);
+        } else {
+            return buildSeleniumPdf(testResultId);
+        }
+    }
+
     public byte[] buildSeleniumPdf(Long testResultId) {
         TestResult result = testResultRepository.findById(testResultId)
                 .orElseThrow(() -> new RuntimeException("TestResult not found"));
@@ -100,7 +111,8 @@ public class TestReportService {
                 node = node.get(0);
             }
             summary = objectMapper.treeToValue(node, SeleniumSummaryDTO.class);
-            if (summary.getTitle() == null) summary.setTitle(fallbackTitle);
+            if (summary.getTitle() == null)
+                summary.setTitle(fallbackTitle);
         } catch (Exception ignored) {
             summary.setTitle(fallbackTitle);
         }
@@ -108,7 +120,8 @@ public class TestReportService {
     }
 
     private BaseColor statusColor(TestResult.ResultStatus status) {
-        if (status == null) return BaseColor.DARK_GRAY;
+        if (status == null)
+            return BaseColor.DARK_GRAY;
         return switch (status) {
             case PASSED -> BaseColor.GREEN;
             case FAILED -> BaseColor.RED;
@@ -117,5 +130,82 @@ public class TestReportService {
         };
     }
 
-}
+    public byte[] buildPerformancePdf(Long testResultId) {
+        TestResult result = testResultRepository.findById(testResultId)
+                .orElseThrow(() -> new RuntimeException("TestResult not found"));
 
+        try {
+            Document document = new Document(PageSize.A4, 36, 36, 36, 36);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            PdfWriter.getInstance(document, baos);
+            document.open();
+
+            Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18);
+            Font subtitleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14);
+            Font normalFont = FontFactory.getFont(FontFactory.HELVETICA, 12);
+            Font boldFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12);
+
+            // Title
+            document.add(new Paragraph("Performance Test Report", titleFont));
+            document.add(Chunk.NEWLINE);
+
+            // Test Details
+            document.add(new Paragraph("Test Name: " + result.getTestName(), subtitleFont));
+            document.add(new Paragraph("Executed At: " + result.getExecutedAt(), normalFont));
+
+            Paragraph statusPara = new Paragraph("Status: " + result.getStatus(),
+                    FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12, statusColor(result.getStatus())));
+            document.add(statusPara);
+            document.add(Chunk.NEWLINE);
+
+            // Key Metrics
+            document.add(new Paragraph("Key Metrics", subtitleFont));
+            document.add(new Paragraph(
+                    "Average Response Time: "
+                            + (result.getAvgResponseTimeMs() != null ? result.getAvgResponseTimeMs() + " ms" : "N/A"),
+                    normalFont));
+            document.add(new Paragraph(
+                    "Max Response Time: "
+                            + (result.getMaxResponseTimeMs() != null ? result.getMaxResponseTimeMs() + " ms" : "N/A"),
+                    normalFont));
+            document.add(new Paragraph(
+                    "95th Percentile: "
+                            + (result.getP95ResponseTimeMs() != null ? result.getP95ResponseTimeMs() + " ms" : "N/A"),
+                    normalFont));
+            document.add(new Paragraph(
+                    "Error Rate: "
+                            + (result.getErrorRatePercent() != null ? result.getErrorRatePercent() + "%" : "N/A"),
+                    normalFont));
+            document.add(Chunk.NEWLINE);
+
+            // Jenkins / JMeter Details
+            if (result.getJmeterReportUrl() != null) {
+                document.add(new Paragraph("JMeter Report Link: " + result.getJmeterReportUrl(),
+                        FontFactory.getFont(FontFactory.HELVETICA, 12, BaseColor.BLUE)));
+            }
+
+            // Extended Logs from Execution Report (if available)
+            if (result.getExecutionReport() != null && !result.getExecutionReport().isBlank()) {
+                document.add(Chunk.NEWLINE);
+                document.add(new Paragraph("Detailed Execution Logs / Jenkins Summary", subtitleFont));
+                document.add(Chunk.NEWLINE);
+
+                // Pretty print JSON or just dump text?
+                // Let's try to format it slightly better if it's JSON
+                String reportContent = result.getExecutionReport();
+                try {
+                    JsonNode json = objectMapper.readTree(reportContent);
+                    document.add(new Paragraph(json.toPrettyString(), FontFactory.getFont(FontFactory.COURIER, 10)));
+                } catch (Exception e) {
+                    // Not JSON, just print text
+                    document.add(new Paragraph(reportContent, FontFactory.getFont(FontFactory.COURIER, 10)));
+                }
+            }
+
+            document.close();
+            return baos.toByteArray();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate Performance PDF report", e);
+        }
+    }
+}

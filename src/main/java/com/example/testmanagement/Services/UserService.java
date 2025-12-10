@@ -2,7 +2,6 @@ package com.example.testmanagement.Services;
 
 import com.example.testmanagement.Entities.Role;
 import com.example.testmanagement.Entities.User;
-import com.example.testmanagement.Repository.RoleRepository;
 import com.example.testmanagement.Repository.UserRepository;
 import com.example.testmanagement.Requests.UserRequest;
 import com.example.testmanagement.Responses.UserResponse;
@@ -12,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -20,8 +18,8 @@ import java.util.stream.Collectors;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditLogService auditLogService;
 
     public Optional<User> findById(Long id) {
         return userRepository.findById(id);
@@ -38,20 +36,31 @@ public class UserService {
     }
 
     public UserResponse createUser(UserRequest request) {
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new RuntimeException("User with this email already exists");
+        }
+
         User user = new User();
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setEnabled(true);
 
-        Set<Role> roles = request.getRoles().stream()
-                .map(roleName -> roleRepository.findByName(roleName)
-                        .orElseThrow(() -> new RuntimeException("Role not found: " + roleName)))
-                .collect(Collectors.toSet());
+        if (request.getRole() != null) {
+            try {
+                user.setRole(Role.valueOf(request.getRole()));
+            } catch (IllegalArgumentException e) {
+                user.setRole(Role.ROLE_TESTER); // Default role if invalid
+            }
+        } else {
+            user.setRole(Role.ROLE_TESTER);
+        }
 
-        user.setRoles(roles);
-
-        return mapToResponse(userRepository.save(user));
+        User savedUser = userRepository.save(user);
+        auditLogService.logAction("CREATE", "USER", savedUser.getId().toString(),
+                "Created user: " + savedUser.getEmail());
+        return mapToResponse(savedUser);
     }
 
     public UserResponse updateUser(Long id, UserRequest request) {
@@ -65,18 +74,22 @@ public class UserService {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
         }
 
-        if (request.getRoles() != null) {
-            Set<Role> roles = request.getRoles().stream()
-                    .map(roleName -> roleRepository.findByName(roleName)
-                            .orElseThrow(() -> new RuntimeException("Role not found: " + roleName)))
-                    .collect(Collectors.toSet());
-            user.setRoles(roles);
+        if (request.getRole() != null) {
+            try {
+                user.setRole(Role.valueOf(request.getRole()));
+            } catch (IllegalArgumentException e) {
+                // Ignore invalid role or keep existing
+            }
         }
 
-        return mapToResponse(userRepository.save(user));
+        User updatedUser = userRepository.save(user);
+        auditLogService.logAction("UPDATE", "USER", updatedUser.getId().toString(),
+                "Updated user: " + updatedUser.getEmail());
+        return mapToResponse(updatedUser);
     }
 
     public void deleteUser(Long id) {
+        auditLogService.logAction("DELETE", "USER", id.toString(), "Deleted user with ID: " + id);
         userRepository.deleteById(id);
     }
 
@@ -94,9 +107,7 @@ public class UserService {
         res.setLastName(user.getLastName());
         res.setEmail(user.getEmail());
         res.setEnabled(user.isEnabled());
-        res.setRoles(user.getRoles().stream()
-                .map(Role::getName)
-                .collect(Collectors.toSet()));
+        res.setRole(user.getRole().name());
         return res;
     }
 

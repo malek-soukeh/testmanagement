@@ -20,7 +20,7 @@ public class TaskController {
     private TaskService taskService;
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<TaskResponse> createTask(
             @RequestBody TaskRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -50,7 +50,7 @@ public class TaskController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Void> deleteTask(@PathVariable Long id) {
         taskService.deleteTask(id);
         return ResponseEntity.noContent().build();

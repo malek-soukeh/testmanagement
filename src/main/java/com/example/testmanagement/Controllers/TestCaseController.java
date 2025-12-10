@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/test-case/{testsuiteId}")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ROLE_ADMIN','ROLE_TESTER')")
+@PreAuthorize("hasAnyAuthority('ROLE_ADMIN','ROLE_TESTER')")
 public class TestCaseController {
 
     private final TestCaseService testCaseService;

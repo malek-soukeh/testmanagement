@@ -1,6 +1,5 @@
 package com.example.testmanagement.Controllers;
 
-
 import com.example.testmanagement.Entities.TestCaseStep;
 import com.example.testmanagement.Requests.CreateTestCaseStepRequest;
 import com.example.testmanagement.Requests.UpdateTestCaseStepRequest;
@@ -21,7 +20,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/test-case-steps")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_TESTER')")
+@PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_TESTER')")
 public class TestCaseStepController {
     private final TestCaseStepService testCaseStepService;
 
@@ -62,7 +61,8 @@ public class TestCaseStepController {
             @PathVariable Long testCaseId,
             @PathVariable TestCaseStep.CaseResult result) {
 
-        List<TestCaseStepResponse> steps = testCaseStepService.getStepsByTestCaseIdAndResult(testCaseId, result).stream()
+        List<TestCaseStepResponse> steps = testCaseStepService.getStepsByTestCaseIdAndResult(testCaseId, result)
+                .stream()
                 .map(TestCaseStepResponse::fromEntity)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(steps);
@@ -93,7 +93,8 @@ public class TestCaseStepController {
             @RequestParam(required = false) String actualResult,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        TestCaseStep updatedStep = testCaseStepService.updateStepResult(id, result, actualResult, userDetails.getUsername());
+        TestCaseStep updatedStep = testCaseStepService.updateStepResult(id, result, actualResult,
+                userDetails.getUsername());
         return ResponseEntity.ok(TestCaseStepResponse.fromEntity(updatedStep));
     }
 

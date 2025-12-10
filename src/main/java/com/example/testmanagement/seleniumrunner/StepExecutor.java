@@ -11,15 +11,18 @@ import java.time.Duration;
 public class StepExecutor {
 
     private static final int TIMEOUT_SECONDS = 10;
-    
+
     private static By by(String selectorType, String target) {
-        if (target == null) return null;
-        if ("xpath".equalsIgnoreCase(selectorType)) return By.xpath(target);
+        if (target == null)
+            return null;
+        if ("xpath".equalsIgnoreCase(selectorType))
+            return By.xpath(target);
         return By.cssSelector(target);
     }
-    
+
     private static String detectSelectorType(String target) {
-        if (target == null || target.isBlank()) return "css";
+        if (target == null || target.isBlank())
+            return "css";
         // Détection automatique des sélecteurs XPath
         if (target.startsWith("//") || target.startsWith("./") || target.startsWith("(")) {
             return "xpath";
@@ -37,32 +40,35 @@ public class StepExecutor {
             String action = (step.getActionType() == null) ? "" : step.getActionType().toLowerCase();
             String target = step.getActionTarget();
             String value = step.getActionValue();
-            
+
             // Détection automatique du type de sélecteur si non spécifié
-            String selectorType = (step.getSelectorType() == null || step.getSelectorType().isBlank()) 
-                ? detectSelectorType(target) 
-                : step.getSelectorType().toLowerCase();
-            
+            String selectorType = (step.getSelectorType() == null || step.getSelectorType().isBlank())
+                    ? detectSelectorType(target)
+                    : step.getSelectorType().toLowerCase();
+
             System.out.println("Executing step: " + step.getStepName());
             System.out.println("  Action: " + action);
             System.out.println("  Target: " + target);
             System.out.println("  Selector Type: " + selectorType);
             System.out.println("  Value: " + (value != null ? value : "null"));
-            
+
             By by = by(selectorType, target);
             switch (action) {
                 case "open":
                 case "navigate":
-                    if (value != null && !value.isBlank()) driver.get(value);
-                    else if (step.getActionTarget() != null) driver.get(step.getActionTarget());
+                    if (value != null && !value.isBlank())
+                        driver.get(value);
+                    else if (step.getActionTarget() != null)
+                        driver.get(step.getActionTarget());
                     break;
 
                 case "click":
-                    // Pour les composants PrimeNG comme p-button, essayer d'abord le sélecteur direct
+                    // Pour les composants PrimeNG comme p-button, essayer d'abord le sélecteur
+                    // direct
                     // puis chercher le bouton à l'intérieur si nécessaire
                     WebElement clickElement = null;
                     Exception lastClickException = null;
-                    
+
                     // Essai 1: Sélecteur direct
                     try {
                         clickElement = wait.until(ExpectedConditions.elementToBeClickable(by));
@@ -79,11 +85,12 @@ public class StepExecutor {
                                 try {
                                     if (target.contains("Sign In") || target.contains("sign in")) {
                                         By textBy = By.xpath(
-                                            "//button[contains(text(), 'Sign In') or contains(text(), 'sign in')] | " +
-                                            "//button//span[contains(text(), 'Sign In') or contains(text(), 'sign in')]/.. | " +
-                                            "//p-button//button[contains(., 'Sign In')] | " +
-                                            "//p-button//span[contains(text(), 'Sign In')]/ancestor::button"
-                                        );
+                                                "//button[contains(text(), 'Sign In') or contains(text(), 'sign in')] | "
+                                                        +
+                                                        "//button//span[contains(text(), 'Sign In') or contains(text(), 'sign in')]/.. | "
+                                                        +
+                                                        "//p-button//button[contains(., 'Sign In')] | " +
+                                                        "//p-button//span[contains(text(), 'Sign In')]/ancestor::button");
                                         clickElement = wait.until(ExpectedConditions.elementToBeClickable(textBy));
                                     } else {
                                         // Essayer de trouver n'importe quel bouton dans p-button
@@ -96,13 +103,12 @@ public class StepExecutor {
                                         JavascriptExecutor js = (JavascriptExecutor) driver;
                                         if (target.contains("Sign In") || target.contains("sign in")) {
                                             clickElement = (WebElement) js.executeScript(
-                                                "return Array.from(document.querySelectorAll('button, p-button button')).find(btn => " +
-                                                "btn.textContent.includes('Sign In') || btn.textContent.includes('sign in'));"
-                                            );
+                                                    "return Array.from(document.querySelectorAll('button, p-button button')).find(btn => "
+                                                            +
+                                                            "btn.textContent.includes('Sign In') || btn.textContent.includes('sign in'));");
                                         } else {
                                             clickElement = (WebElement) js.executeScript(
-                                                "return document.querySelector('p-button button') || document.querySelector('button');"
-                                            );
+                                                    "return document.querySelector('p-button button') || document.querySelector('button');");
                                         }
                                         if (clickElement == null) {
                                             throw new Exception("Button not found via JavaScript");
@@ -116,22 +122,23 @@ public class StepExecutor {
                             throw lastClickException;
                         }
                     }
-                    
+
                     if (clickElement == null) {
                         throw new RuntimeException("Could not find clickable element with selector: " + target);
                     }
-                    
+
                     clickElement.click();
                     break;
 
                 case "sendkeys":
                 case "type":
                 case "input":
-                    // Pour les composants PrimeNG comme p-password, essayer d'abord le sélecteur direct
+                    // Pour les composants PrimeNG comme p-password, essayer d'abord le sélecteur
+                    // direct
                     // puis chercher l'input à l'intérieur si nécessaire
                     WebElement inputElement = null;
                     Exception lastException = null;
-                    
+
                     // Essai 1: Sélecteur direct
                     try {
                         System.out.println("  Trying direct selector: " + by);
@@ -155,16 +162,20 @@ public class StepExecutor {
                                 // Essai 3: Chercher un input à l'intérieur (pour les composants PrimeNG)
                                 try {
                                     System.out.println("    Trying CSS selector with input inside");
-                                    By fallbackBy = By.cssSelector("#" + id + " input, #" + id + " input[type='password'], #" + id + " input[type='text']");
-                                    inputElement = wait.until(ExpectedConditions.visibilityOfElementLocated(fallbackBy));
+                                    By fallbackBy = By.cssSelector("#" + id + " input, #" + id
+                                            + " input[type='password'], #" + id + " input[type='text']");
+                                    inputElement = wait
+                                            .until(ExpectedConditions.visibilityOfElementLocated(fallbackBy));
                                     System.out.println("    ✓ Found element with CSS fallback");
                                 } catch (Exception e3) {
                                     System.out.println("    ✗ CSS fallback failed: " + e3.getMessage());
                                     // Essai 4: XPath pour trouver l'input
                                     try {
                                         System.out.println("    Trying XPath fallback");
-                                        By xpathBy = By.xpath("//*[@id='" + id + "']//input | //input[@id='" + id + "']");
-                                        inputElement = wait.until(ExpectedConditions.visibilityOfElementLocated(xpathBy));
+                                        By xpathBy = By
+                                                .xpath("//*[@id='" + id + "']//input | //input[@id='" + id + "']");
+                                        inputElement = wait
+                                                .until(ExpectedConditions.visibilityOfElementLocated(xpathBy));
                                         System.out.println("    ✓ Found element with XPath fallback");
                                     } catch (Exception e4) {
                                         System.out.println("    ✗ XPath fallback failed: " + e4.getMessage());
@@ -173,10 +184,10 @@ public class StepExecutor {
                                             System.out.println("    Trying JavaScript fallback");
                                             JavascriptExecutor js = (JavascriptExecutor) driver;
                                             inputElement = (WebElement) js.executeScript(
-                                                "return document.getElementById('" + id + "')?.querySelector('input') || " +
-                                                "document.querySelector('#" + id + " input') || " +
-                                                "document.getElementById('" + id + "');"
-                                            );
+                                                    "return document.getElementById('" + id
+                                                            + "')?.querySelector('input') || " +
+                                                            "document.querySelector('#" + id + " input') || " +
+                                                            "document.getElementById('" + id + "');");
                                             if (inputElement == null) {
                                                 throw new Exception("Element not found via JavaScript");
                                             }
@@ -192,11 +203,11 @@ public class StepExecutor {
                             throw lastException;
                         }
                     }
-                    
+
                     if (inputElement == null) {
                         throw new RuntimeException("Could not find input element with selector: " + target);
                     }
-                    
+
                     String textToType = value == null ? "" : value;
 
                     try {
@@ -219,9 +230,9 @@ public class StepExecutor {
                         try {
                             ((JavascriptExecutor) driver).executeScript(
                                     "arguments[0].focus();" +
-                                    "arguments[0].value=arguments[1];" +
-                                    "arguments[0].dispatchEvent(new Event('input', {bubbles:true}));" +
-                                    "arguments[0].dispatchEvent(new Event('change', {bubbles:true}));",
+                                            "arguments[0].value=arguments[1];" +
+                                            "arguments[0].dispatchEvent(new Event('input', {bubbles:true}));" +
+                                            "arguments[0].dispatchEvent(new Event('change', {bubbles:true}));",
                                     inputElement, textToType);
                         } catch (Exception jsTypeEx) {
                             throw typeEx;
@@ -252,7 +263,8 @@ public class StepExecutor {
                 case "asserttext":
                     WebElement textElement = wait.until(ExpectedConditions.visibilityOfElementLocated(by));
                     String actualText = textElement.getText();
-                    if (value == null) return false;
+                    if (value == null)
+                        return false;
                     if (!actualText.contains(value)) {
                         System.out.println("Assertion failed for text. Expected: " + value + ", Actual: " + actualText);
                         return false;
@@ -268,7 +280,8 @@ public class StepExecutor {
                     break;
 
                 case "assertenabled":
-                    WebElement enabledElement = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(step.getActionTarget())));
+                    WebElement enabledElement = wait
+                            .until(ExpectedConditions.visibilityOfElementLocated(By.xpath(step.getActionTarget())));
                     if (!enabledElement.isEnabled()) {
                         System.out.println("Element not enabled: " + step.getActionTarget());
                         return false;
@@ -289,7 +302,17 @@ public class StepExecutor {
                 case "title":
                     String title = driver.getTitle();
                     if (value == null || !title.contains(value)) {
-                        System.out.printf("Title assertion failed: expected contains '%s' but was '%s'%n", value, title);
+                        System.out.printf("Title assertion failed: expected contains '%s' but was '%s'%n", value,
+                                title);
+                        return false;
+                    }
+                    break;
+
+                case "asserturl":
+                    String currentUrl = driver.getCurrentUrl();
+                    if (value == null || !currentUrl.contains(value)) {
+                        System.out.printf("URL assertion failed: expected contains '%s' but was '%s'%n", value,
+                                currentUrl);
                         return false;
                     }
                     break;
@@ -311,5 +334,3 @@ public class StepExecutor {
         }
     }
 }
-
-
